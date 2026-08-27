@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Upload,
@@ -54,10 +54,6 @@ function getFileIcon(file: File) {
   return <ImageIcon className="w-5 h-5 text-blue-500" />;
 }
 
-/**
- * Fast client-side image optimization.
- * Resizes large camera photos (>1.5MB) down to 2400px print quality at 88% JPEG quality.
- */
 async function compressImageIfNeeded(file: File): Promise<File> {
   if (!file.type.startsWith("image/") || file.size < 1.5 * 1024 * 1024) {
     return file;
@@ -142,6 +138,41 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
+  // Calculate live client-side preview price
+  const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+  const doneFiles = files.filter((f) => f.status === "done").length;
+
+  const getClientCalculatedPrice = () => {
+    let rate = colorMode === "bw" ? 1.0 : 5.0;
+    if (paperSize === "A3") rate *= 2;
+    if (paperSize === "Legal") rate *= 1.5;
+    const sheets = sides === "double" ? Math.ceil(totalPages / 2) : totalPages;
+    return (rate * sheets * copies).toFixed(2);
+  };
+
+  const currentDisplayPrice = estimatedPrice || getClientCalculatedPrice();
+
+  // Auto-fetch price & order status when on submitted screen
+  useEffect(() => {
+    if (step === "submitted" && orderId) {
+      const fetchStatus = async () => {
+        try {
+          const res = await fetch(`/api/orders/${orderId}/status`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.estimatedPrice) {
+              setEstimatedPrice(data.estimatedPrice);
+            }
+          }
+        } catch {}
+      };
+
+      fetchStatus();
+      const interval = setInterval(fetchStatus, 1500);
+      return () => clearInterval(interval);
+    }
+  }, [step, orderId]);
+
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const fileArray = Array.from(newFiles);
     const validFiles: UploadedFile[] = [];
@@ -212,7 +243,6 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                   : f
               )
             );
-            // Update live estimated price if returned
             if (data.estimatedPrice) {
               setEstimatedPrice(data.estimatedPrice);
             }
@@ -263,7 +293,6 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
     if (addedItems.length > 0) {
       setFiles((prev) => [...prev, ...addedItems]);
-      // Start background upload immediately for newly added files
       addedItems.forEach((item) => {
         uploadSingleFile(item, orderId);
       });
@@ -276,7 +305,6 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     setSubmitError(null);
 
     try {
-      // 1. INSTANT: Create order token (~200ms)
       const orderRes = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -304,10 +332,10 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       setOrderToken(token);
       setOrderNumber(num);
 
-      // 2. INSTANT UI TRANSITION: Show Token Screen Immediately!
+      // INSTANT UI TRANSITION to Token Screen
       setStep("submitted");
 
-      // 3. BACKGROUND: Upload all files in parallel
+      // Upload files in background
       files.forEach((f) => {
         uploadSingleFile(f, newOrderId);
       });
@@ -319,10 +347,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     }
   };
 
-  const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
-  const doneFiles = files.filter((f) => f.status === "done").length;
-
-  // ─── SUBMITTED SCREEN (WITH ADD MORE FILES + LIVE ESTIMATED PRICE) ──────
+  // ─── FIRST PAGE WHERE TOKEN NUMBER IS VISIBLE ──────────────────────────────
   if (step === "submitted" && orderToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center p-4 pb-12">
@@ -340,14 +365,14 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             <p className="text-xs opacity-75">Tell this number to the operator</p>
           </div>
 
-          {/* Estimated Price Box */}
+          {/* ESTIMATED PRICE BOX (CALCULATED & VISIBLE ON FIRST TOKEN SCREEN) */}
           <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
             <div className="text-left">
               <p className="text-xs text-emerald-700 font-bold uppercase tracking-wide">Estimated Price</p>
-              <p className="text-xs text-emerald-600">Calculated by print settings</p>
+              <p className="text-xs text-emerald-600">Calculated for {totalPages} page{totalPages !== 1 ? "s" : ""}</p>
             </div>
-            <p className="text-2xl font-black text-emerald-800">
-              {estimatedPrice ? `₹${estimatedPrice}` : "Calculating…"}
+            <p className="text-3xl font-black text-emerald-800">
+              ₹{currentDisplayPrice}
             </p>
           </div>
 
@@ -407,7 +432,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     );
   }
 
-  // ─── MAIN UPLOAD UI ────────────────────────────────────────────────────────
+  // ─── MAIN UPLOAD SELECTION FORM ──────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
       {/* Header */}
@@ -501,6 +526,17 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <Printer className="w-4 h-4 text-indigo-500" />
               Print Requirements
             </h2>
+
+            {/* Estimated Price Live Preview Box on Form */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Estimated Cost</p>
+                <p className="text-[11px] text-emerald-600">
+                  {totalPages} page{totalPages !== 1 ? "s" : ""} · {colorMode === "bw" ? "B&W" : "Color"} · {copies} cop{copies > 1 ? "ies" : "y"}
+                </p>
+              </div>
+              <p className="text-2xl font-black text-emerald-800">₹{currentDisplayPrice}</p>
+            </div>
 
             {/* Color */}
             <div>

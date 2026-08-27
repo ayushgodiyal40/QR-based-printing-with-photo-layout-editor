@@ -166,5 +166,8 @@ export async function POST(
     mimeType: savedFile.mimeType,
     imageWidth: savedFile.imageWidth,
     imageHeight: savedFile.imageHeight,
+    totalFiles,
+    totalPages,
+    estimatedPrice: estimatedPriceStr,
   });
 }
