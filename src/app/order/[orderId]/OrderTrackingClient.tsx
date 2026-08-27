@@ -9,9 +9,11 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  ArrowLeft,
+  Plus,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
-import Link from "next/link";
 
 type OrderStatus =
   | "uploading"
@@ -110,11 +112,15 @@ const STATUS_CONFIG: Record<
 };
 
 const STATUS_STEPS: OrderStatus[] = ["received", "waiting", "processing", "printing", "completed"];
+const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
 
 export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingMore, setUploadingMore] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const fetchOrder = async () => {
@@ -134,21 +140,19 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   useEffect(() => {
     fetchOrder();
 
-    // Connect SSE for real-time updates
+    // Connect SSE for real-time status updates
     const es = new EventSource(`/api/sse/orders/${orderId}`);
     eventSourceRef.current = es;
 
     es.addEventListener("status_update", (e) => {
       const data = JSON.parse(e.data);
-      setOrder((prev) => prev ? { ...prev, status: data.status } : prev);
+      setOrder((prev) => prev ? { ...prev, status: data.status, ...data } : prev);
     });
 
     es.onerror = () => {
-      // Fallback to polling
       es.close();
     };
 
-    // Polling fallback every 15 seconds
     const poll = setInterval(fetchOrder, 15000);
 
     return () => {
@@ -156,6 +160,36 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
       clearInterval(poll);
     };
   }, [orderId]);
+
+  const handleAddMoreFiles = async (filesList: FileList) => {
+    const filesArray = Array.from(filesList);
+    if (filesArray.length === 0) return;
+
+    setUploadingMore(true);
+    setUploadMsg("Uploading additional files…");
+
+    try {
+      for (const file of filesArray) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`/api/orders/${orderId}/files`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          alert(`Failed to upload ${file.name}: ${errData.error}`);
+        }
+      }
+      setUploadMsg("Files added successfully! ✓");
+      await fetchOrder();
+    } catch {
+      alert("Error adding files. Check network connection.");
+    } finally {
+      setUploadingMore(false);
+      setTimeout(() => setUploadMsg(null), 3000);
+    }
+  };
 
   if (loading) {
     return (
@@ -188,10 +222,19 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
       <div className="max-w-sm mx-auto px-4 py-8">
         {/* Token display */}
-        <div className="glass-card rounded-3xl p-6 mb-5 animate-fade-in text-center">
+        <div className="glass-card rounded-3xl p-6 mb-5 animate-fade-in text-center shadow-xl">
           <p className="text-sm text-gray-500 mb-1">Your Token</p>
-          <p className="text-5xl font-black text-indigo-700 tracking-wider">{order.token}</p>
+          <p className="text-6xl font-black text-indigo-700 tracking-wider">{order.token}</p>
           <p className="text-xs text-gray-400 mt-1">{order.orderNumber}</p>
+        </div>
+
+        {/* Price Card */}
+        <div className="bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-5 mb-5 shadow-sm text-center">
+          <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-1">Estimated Total Price</p>
+          <p className="text-4xl font-black text-emerald-800 mb-1">
+            {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
+          </p>
+          <p className="text-xs text-emerald-600">Calculated per print settings & pages</p>
         </div>
 
         {/* Status card */}
@@ -227,16 +270,13 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                           : "bg-gray-200"
                       }`}
                     />
-                    {i < STATUS_STEPS.length - 1 && (
-                      <div className="absolute" />
-                    )}
                   </div>
                 );
               })}
             </div>
             <div className="flex justify-between mt-1">
               {STATUS_STEPS.map((s) => (
-                <p key={s} className="text-[9px] text-gray-400 text-center flex-1 capitalize">
+                <p key={s} className="text-[9px] text-gray-400 text-center flex-1 capitalize font-medium">
                   {s}
                 </p>
               ))}
@@ -244,47 +284,77 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           </div>
         )}
 
+        {/* Add More Files Button (allowed while order is not completed/cancelled) */}
+        {!isTerminal && (
+          <div className="glass-card rounded-2xl p-4 mb-5 border-2 border-indigo-100 animate-fade-in">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_EXTENSIONS.join(",")}
+              className="hidden"
+              onChange={(e) => e.target.files && handleAddMoreFiles(e.target.files)}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingMore}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+            >
+              {uploadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  + Add More Files to This Order
+                </>
+              )}
+            </button>
+            {uploadMsg && (
+              <p className="text-xs text-center text-indigo-600 font-bold mt-2 animate-fade-in">
+                {uploadMsg}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Order details */}
         <div className="glass-card rounded-2xl p-5 mb-5 animate-fade-in">
-          <h2 className="font-semibold text-gray-800 mb-3">Order Details</h2>
+          <h2 className="font-semibold text-gray-800 mb-3">Order Summary</h2>
           <div className="space-y-2 text-sm">
             {order.customerName && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Customer</span>
-                <span className="font-medium">{order.customerName}</span>
+                <span className="font-semibold">{order.customerName}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-gray-500">Files</span>
-              <span className="font-medium">{order.totalFiles}</span>
+              <span className="font-semibold">{order.totalFiles}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Pages</span>
-              <span className="font-medium">{order.totalPages}</span>
+              <span className="font-semibold">{order.totalPages}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Print type</span>
-              <span className="font-medium">{order.colorMode === "bw" ? "B&W" : "Color"}</span>
+              <span className="font-semibold">{order.colorMode === "bw" ? "B&W" : "Color"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Paper</span>
-              <span className="font-medium">{order.paperSize}</span>
+              <span className="font-semibold">{order.paperSize}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Copies</span>
-              <span className="font-medium">{order.copies}</span>
+              <span className="font-semibold">{order.copies}</span>
             </div>
-            {order.estimatedPrice && (
-              <div className="flex justify-between border-t border-gray-100 pt-2 mt-2">
-                <span className="text-gray-700 font-medium">Estimated Price</span>
-                <span className="font-bold text-indigo-700">₹{order.estimatedPrice}</span>
-              </div>
-            )}
           </div>
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Page updates automatically every 15 seconds.
+          Status updates automatically in real time.
         </p>
       </div>
     </div>

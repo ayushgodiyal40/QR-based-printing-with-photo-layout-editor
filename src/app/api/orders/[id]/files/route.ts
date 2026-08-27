@@ -4,6 +4,7 @@ import { orders, orderFiles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { storeFile } from "@/lib/storage";
 import { getPdfPageCount, getImageDimensions, isAllowedFile } from "@/lib/file-processor";
+import { calculatePrice } from "@/lib/pricing";
 import { uploadLimiter, getIp } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { notifyShop } from "@/lib/sse";
@@ -24,7 +25,16 @@ export async function POST(
 
   // Verify order exists and is in acceptable state
   const orderRows = await db
-    .select({ id: orders.id, shopId: orders.shopId, status: orders.status, expiresAt: orders.expiresAt })
+    .select({
+      id: orders.id,
+      shopId: orders.shopId,
+      status: orders.status,
+      expiresAt: orders.expiresAt,
+      colorMode: orders.colorMode,
+      paperSize: orders.paperSize,
+      copies: orders.copies,
+      sides: orders.sides,
+    })
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1);
@@ -110,7 +120,7 @@ export async function POST(
     })
     .returning();
 
-  // Update order totals
+  // Update order totals and recalculate price
   const allFiles = await db
     .select({ pageCount: orderFiles.pageCount })
     .from(orderFiles)
@@ -119,9 +129,19 @@ export async function POST(
   const totalFiles = allFiles.length;
   const totalPages = allFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
 
+  const price = await calculatePrice(order.shopId, {
+    pages: totalPages,
+    colorMode: order.colorMode,
+    paperSize: order.paperSize,
+    copies: order.copies,
+    sides: order.sides,
+  });
+
+  const estimatedPriceStr = price.toString();
+
   await db
     .update(orders)
-    .set({ totalFiles, totalPages, updatedAt: new Date() })
+    .set({ totalFiles, totalPages, estimatedPrice: estimatedPriceStr, updatedAt: new Date() })
     .where(eq(orders.id, orderId));
 
   await audit({
@@ -132,10 +152,10 @@ export async function POST(
     details: { fileName: file.name, sizeBytes: file.size, pageCount },
   });
 
-  // Notify dashboard of file upload
+  // Notify dashboard of file upload & price update
   notifyShop(order.shopId, {
     event: "order_updated",
-    data: { orderId, totalFiles, totalPages },
+    data: { orderId, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
   });
 
   return NextResponse.json({

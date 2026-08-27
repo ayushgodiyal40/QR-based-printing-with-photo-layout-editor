@@ -57,7 +57,6 @@ function getFileIcon(file: File) {
 /**
  * Fast client-side image optimization.
  * Resizes large camera photos (>1.5MB) down to 2400px print quality at 88% JPEG quality.
- * Shrinks 15MB photos to ~1.2MB in 50ms, making mobile uploads 15x faster!
  */
 async function compressImageIfNeeded(file: File): Promise<File> {
   if (!file.type.startsWith("image/") || file.size < 1.5 * 1024 * 1024) {
@@ -117,6 +116,7 @@ async function compressImageIfNeeded(file: File): Promise<File> {
 export default function UploadClient({ shop }: { shop: Shop }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
   const idempotencyKey = useRef(crypto.randomUUID());
 
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -127,6 +127,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderToken, setOrderToken] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Print settings
@@ -185,9 +186,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     );
 
     try {
-      // Compress large photos in 50ms before upload
       const fileToUpload = await compressImageIfNeeded(item.file);
-
       const formData = new FormData();
       formData.append("file", fileToUpload);
 
@@ -213,6 +212,10 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                   : f
               )
             );
+            // Update live estimated price if returned
+            if (data.estimatedPrice) {
+              setEstimatedPrice(data.estimatedPrice);
+            }
             resolve();
           } else {
             let errMsg = "Upload failed.";
@@ -235,6 +238,35 @@ export default function UploadClient({ shop }: { shop: Shop }) {
           f.id === item.id ? { ...f, status: "error", error: err.message } : f
         )
       );
+    }
+  };
+
+  const handleAddMoreFilesAfterSubmit = (newFiles: FileList | File[]) => {
+    if (!orderId) return;
+    const fileArray = Array.from(newFiles);
+    const addedItems: UploadedFile[] = [];
+
+    for (const file of fileArray) {
+      const ext = "." + file.name.split(".").pop()?.toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        alert(`"${file.name}" is not supported.`);
+        continue;
+      }
+      const item: UploadedFile = {
+        id: crypto.randomUUID(),
+        file,
+        status: "pending",
+        progress: 0,
+      };
+      addedItems.push(item);
+    }
+
+    if (addedItems.length > 0) {
+      setFiles((prev) => [...prev, ...addedItems]);
+      // Start background upload immediately for newly added files
+      addedItems.forEach((item) => {
+        uploadSingleFile(item, orderId);
+      });
     }
   };
 
@@ -289,32 +321,42 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
   const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
   const doneFiles = files.filter((f) => f.status === "done").length;
-  const failedFiles = files.filter((f) => f.status === "error").length;
-  const isUploadingAny = files.some((f) => f.status === "uploading" || f.status === "pending");
 
-  // ─── SUBMITTED SCREEN (INSTANT 0.2s LOAD) ──────────────────────────────
+  // ─── SUBMITTED SCREEN (WITH ADD MORE FILES + LIVE ESTIMATED PRICE) ──────
   if (step === "submitted" && orderToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center p-4 pb-12">
         <div className="w-full max-w-sm glass-card rounded-3xl p-6 text-center animate-fade-in shadow-2xl">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Files Sent!</h1>
-          <p className="text-gray-500 text-xs mb-6">Show your token number to the shop operator.</p>
+          <p className="text-gray-500 text-xs mb-5">Show your token number at the shop counter.</p>
 
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 mb-5 text-white shadow-xl">
+          {/* Token Card */}
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 mb-4 text-white shadow-xl">
             <p className="text-xs font-medium opacity-80 mb-1">Your Token Number</p>
             <p className="text-6xl font-black tracking-wider mb-1">{orderToken}</p>
-            <p className="text-xs opacity-75">Tell this number at counter</p>
+            <p className="text-xs opacity-75">Tell this number to the operator</p>
+          </div>
+
+          {/* Estimated Price Box */}
+          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
+            <div className="text-left">
+              <p className="text-xs text-emerald-700 font-bold uppercase tracking-wide">Estimated Price</p>
+              <p className="text-xs text-emerald-600">Calculated by print settings</p>
+            </div>
+            <p className="text-2xl font-black text-emerald-800">
+              {estimatedPrice ? `₹${estimatedPrice}` : "Calculating…"}
+            </p>
           </div>
 
           {/* Real-time file upload progress list */}
-          <div className="text-left bg-gray-50 rounded-2xl p-4 mb-5 space-y-3 border border-gray-100">
+          <div className="text-left bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 border border-gray-100">
             <div className="flex justify-between items-center text-xs border-b border-gray-200 pb-2">
-              <span className="font-semibold text-gray-700">Upload Status</span>
+              <span className="font-bold text-gray-700">Files ({files.length})</span>
               <span className="font-bold text-indigo-600">
-                {doneFiles} of {files.length} ready
+                {doneFiles} of {files.length} uploaded
               </span>
             </div>
 
@@ -336,9 +378,27 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             ))}
           </div>
 
+          {/* ADD MORE FILES BUTTON AFTER SUBMIT */}
+          <input
+            ref={addMoreInputRef}
+            type="file"
+            multiple
+            accept={ALLOWED_EXTENSIONS.join(",")}
+            className="hidden"
+            onChange={(e) => e.target.files && handleAddMoreFilesAfterSubmit(e.target.files)}
+          />
+
+          <button
+            onClick={() => addMoreInputRef.current?.click()}
+            className="w-full py-3 mb-3 rounded-xl bg-white border-2 border-indigo-200 text-indigo-600 font-bold text-sm hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            + Add More Files to This Order
+          </button>
+
           <button
             onClick={() => router.push(`/order/${orderId}`)}
-            className="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
           >
             Track Order Status →
           </button>
@@ -406,7 +466,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <h2 className="font-bold text-gray-800 text-sm">{files.length} file{files.length !== 1 ? "s" : ""} selected</h2>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1 text-xs text-indigo-600 font-bold"
+                className="flex items-center gap-1 text-xs text-indigo-600 font-bold cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Add more
               </button>
@@ -424,7 +484,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                   </div>
                   <button
                     onClick={() => removeFile(f.id)}
-                    className="text-gray-300 hover:text-red-400 transition-colors p-1"
+                    className="text-gray-300 hover:text-red-400 transition-colors p-1 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -448,7 +508,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setColorMode("bw")}
-                  className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+                  className={`py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                     colorMode === "bw"
                       ? "bg-gray-900 text-white shadow"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -458,7 +518,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 </button>
                 <button
                   onClick={() => setColorMode("color")}
-                  className={`py-2.5 rounded-xl font-bold text-xs transition-all ${
+                  className={`py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                     colorMode === "color"
                       ? "bg-gradient-to-r from-red-500 via-yellow-400 to-blue-500 text-white shadow"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -477,7 +537,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                   <button
                     key={size}
                     onClick={() => setPaperSize(size)}
-                    className={`py-2 rounded-xl font-bold text-xs transition-all ${
+                    className={`py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                       paperSize === size
                         ? "bg-indigo-600 text-white shadow"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -495,14 +555,14 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setCopies(Math.max(1, copies - 1))}
-                  className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-base font-bold text-gray-700"
+                  className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-base font-bold text-gray-700 cursor-pointer"
                 >
                   −
                 </button>
                 <span className="text-xl font-black text-gray-800 w-8 text-center">{copies}</span>
                 <button
                   onClick={() => setCopies(Math.min(999, copies + 1))}
-                  className="w-9 h-9 rounded-xl bg-indigo-100 hover:bg-indigo-200 flex items-center justify-center text-base font-bold text-indigo-600"
+                  className="w-9 h-9 rounded-xl bg-indigo-100 hover:bg-indigo-200 flex items-center justify-center text-base font-bold text-indigo-600 cursor-pointer"
                 >
                   +
                 </button>
@@ -515,7 +575,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setSides("single")}
-                  className={`py-2 rounded-xl font-bold text-xs transition-all ${
+                  className={`py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                     sides === "single"
                       ? "bg-indigo-600 text-white shadow"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -525,7 +585,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 </button>
                 <button
                   onClick={() => setSides("double")}
-                  className={`py-2 rounded-xl font-bold text-xs transition-all ${
+                  className={`py-2 rounded-xl font-bold text-xs transition-all cursor-pointer ${
                     sides === "double"
                       ? "bg-indigo-600 text-white shadow"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -539,7 +599,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             {/* Advanced toggle */}
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1 text-xs text-indigo-600 font-bold pt-1"
+              className="flex items-center gap-1 text-xs text-indigo-600 font-bold pt-1 cursor-pointer"
             >
               {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               {showAdvanced ? "Hide" : "More"} options (Orientation, Page range)
@@ -554,7 +614,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                       <button
                         key={o}
                         onClick={() => setOrientation(o)}
-                        className={`py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+                        className={`py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                           orientation === o
                             ? "bg-indigo-600 text-white"
                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
