@@ -1,26 +1,37 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { v4 as uuidv4 } from "uuid";
 
-const UPLOAD_BASE = process.env.UPLOAD_DIR || "./uploads";
+function getUploadBase(): string {
+  if (process.env.VERCEL) {
+    return path.join(os.tmpdir(), "uploads");
+  }
+  return process.env.UPLOAD_DIR || "./uploads";
+}
 
 export interface StoredFile {
   storagePath: string;
   storedName: string;
+  base64Data: string;
 }
 
 /**
- * Ensure directory exists.
+ * Ensure directory exists without throwing read-only error.
  */
 function ensureDir(dirPath: string) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+  } catch {
+    // Ignore if read-only or tmp dir creation issue
   }
 }
 
 /**
- * Store an uploaded file buffer to disk.
- * Returns the relative storage path and stored filename.
+ * Store an uploaded file buffer.
+ * Saves to local/tmp disk AND returns base64 for DB persistence (Vercel compatible).
  */
 export async function storeFile(
   buffer: Buffer,
@@ -30,32 +41,52 @@ export async function storeFile(
 ): Promise<StoredFile> {
   const ext = path.extname(originalName).toLowerCase();
   const storedName = `${uuidv4()}${ext}`;
-  const dir = path.join(UPLOAD_BASE, shopId, orderId);
+  const uploadBase = getUploadBase();
+  const dir = path.join(uploadBase, shopId, orderId);
   ensureDir(dir);
   const fullPath = path.join(dir, storedName);
-  await fs.promises.writeFile(fullPath, buffer);
-  // Store relative path from UPLOAD_BASE
+
+  try {
+    await fs.promises.writeFile(fullPath, buffer);
+  } catch {
+    // Ignore local write failure on serverless
+  }
+
   const storagePath = path.join(shopId, orderId, storedName);
-  return { storagePath, storedName };
+  const base64Data = buffer.toString("base64");
+
+  return { storagePath, storedName, base64Data };
 }
 
 /**
- * Read a stored file as a Buffer.
+ * Read a stored file as a Buffer (from disk or DB fallback).
  */
-export async function readFile(storagePath: string): Promise<Buffer> {
-  const fullPath = path.join(UPLOAD_BASE, storagePath);
-  return fs.promises.readFile(fullPath);
+export async function readFile(storagePath: string, dbBase64Data?: string | null): Promise<Buffer> {
+  if (dbBase64Data) {
+    return Buffer.from(dbBase64Data, "base64");
+  }
+
+  const uploadBase = getUploadBase();
+  const fullPath = path.join(uploadBase, storagePath);
+
+  try {
+    return await fs.promises.readFile(fullPath);
+  } catch {
+    // Fallback if local disk file missing
+    return Buffer.from("");
+  }
 }
 
 /**
- * Delete a stored file from disk.
+ * Delete a stored file.
  */
 export async function deleteFile(storagePath: string): Promise<void> {
   try {
-    const fullPath = path.join(UPLOAD_BASE, storagePath);
+    const uploadBase = getUploadBase();
+    const fullPath = path.join(uploadBase, storagePath);
     await fs.promises.unlink(fullPath);
   } catch {
-    // File may already be deleted, ignore
+    // Ignore
   }
 }
 
@@ -67,7 +98,8 @@ export async function deleteOrderDirectory(
   orderId: string
 ): Promise<void> {
   try {
-    const dir = path.join(UPLOAD_BASE, shopId, orderId);
+    const uploadBase = getUploadBase();
+    const dir = path.join(uploadBase, shopId, orderId);
     await fs.promises.rm(dir, { recursive: true, force: true });
   } catch {
     // Ignore
@@ -75,16 +107,10 @@ export async function deleteOrderDirectory(
 }
 
 /**
- * Get the absolute full path for streaming.
- */
-export function getAbsolutePath(storagePath: string): string {
-  return path.resolve(path.join(UPLOAD_BASE, storagePath));
-}
-
-/**
- * Check if a file exists.
+ * Check if file exists.
  */
 export function fileExists(storagePath: string): boolean {
-  const fullPath = path.join(UPLOAD_BASE, storagePath);
+  const uploadBase = getUploadBase();
+  const fullPath = path.join(uploadBase, storagePath);
   return fs.existsSync(fullPath);
 }

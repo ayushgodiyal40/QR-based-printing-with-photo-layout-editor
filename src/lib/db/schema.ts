@@ -160,6 +160,7 @@ export const orderFiles = pgTable(
     imageWidth: integer("image_width"),
     imageHeight: integer("image_height"),
     storagePath: text("storage_path").notNull(),
+    fileData: text("file_data"),
     uploadStatus: uploadStatusEnum("upload_status").notNull().default("complete"),
     isDeleted: boolean("is_deleted").notNull().default(false),
     deletedAt: timestamp("deleted_at"),

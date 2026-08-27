@@ -85,7 +85,7 @@ export async function POST(
   }
 
   // Store the file
-  const { storagePath, storedName } = await storeFile(
+  const { storagePath, storedName, base64Data } = await storeFile(
     buffer,
     file.name,
     order.shopId,
@@ -105,6 +105,7 @@ export async function POST(
       imageWidth,
       imageHeight,
       storagePath,
+      fileData: base64Data,
       uploadStatus: "complete",
     })
     .returning();

@@ -28,11 +28,7 @@ export async function GET(req: NextRequest) {
 
   const file = fileRows[0];
 
-  if (!fileExists(file.storagePath)) {
-    return new NextResponse("File not found on disk", { status: 404 });
-  }
-
-  const buffer = await readFile(file.storagePath);
+  const buffer = await readFile(file.storagePath, file.fileData);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

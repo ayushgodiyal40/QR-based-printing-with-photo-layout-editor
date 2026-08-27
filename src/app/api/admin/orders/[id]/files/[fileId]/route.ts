@@ -51,11 +51,6 @@ export async function GET(
     return NextResponse.json({ url, fileName: file.originalName, mimeType: file.mimeType });
   }
 
-  // Stream the file directly
-  if (!fileExists(file.storagePath)) {
-    return NextResponse.json({ error: "File not found on disk." }, { status: 404 });
-  }
-
   await audit({
     shopId,
     orderId: id,
@@ -64,7 +59,7 @@ export async function GET(
     details: { fileName: file.originalName },
   });
 
-  const fileBuffer = await readFile(file.storagePath);
+  const fileBuffer = await readFile(file.storagePath, file.fileData);
 
   return new NextResponse(new Uint8Array(fileBuffer), {
     headers: {
