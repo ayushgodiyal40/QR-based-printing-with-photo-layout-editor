@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   Download,
   Eye,
+  Trash2,
   Loader2,
   CheckCircle,
   Printer,
@@ -57,6 +58,7 @@ export default function OrderDetailPage() {
   const [addingNote, setAddingNote] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<any>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
   // Editable settings
   const [editStatus, setEditStatus] = useState("");
@@ -142,6 +144,18 @@ export default function OrderDetailPage() {
     }
   };
 
+  const deleteSingleFile = async (file: any) => {
+    if (!confirm(`Delete unwanted file "${file.originalName}" from this order?`)) return;
+    setDeletingFileId(file.id);
+    const res = await fetch(`/api/admin/orders/${id}/files/${file.id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      fetchOrder();
+    }
+    setDeletingFileId(null);
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center h-64">
@@ -193,43 +207,59 @@ export default function OrderDetailPage() {
             <h2 className="font-bold text-gray-800 mb-4">
               Files ({files.length})
             </h2>
-            <div className="space-y-3">
-              {files.map((file) => (
-                <div key={file.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-white rounded-xl border border-gray-100 flex items-center justify-center flex-shrink-0">
-                    {file.mimeType === "application/pdf" ? (
-                      <FileText className="w-5 h-5 text-red-500" />
-                    ) : (
-                      <ImageIcon className="w-5 h-5 text-blue-500" />
-                    )}
+            {files.length === 0 ? (
+              <p className="text-sm text-gray-400 py-4 text-center">No files in this order.</p>
+            ) : (
+              <div className="space-y-3">
+                {files.map((file) => (
+                  <div key={file.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    <div className="w-10 h-10 bg-white rounded-xl border border-gray-100 flex items-center justify-center flex-shrink-0">
+                      {file.mimeType === "application/pdf" || file.originalName.toLowerCase().endsWith(".pdf") ? (
+                        <FileText className="w-5 h-5 text-red-500" />
+                      ) : (
+                        <ImageIcon className="w-5 h-5 text-blue-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-800 truncate">{file.originalName}</p>
+                      <p className="text-xs text-gray-400">
+                        {formatBytes(file.sizeBytes)}
+                        {file.pageCount && ` · ${file.pageCount} page${file.pageCount !== 1 ? "s" : ""}`}
+                        {file.imageWidth && ` · ${file.imageWidth}×${file.imageHeight}px`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openPreview(file)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        title="Preview File"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => downloadFile(file)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        title="Download File"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteSingleFile(file)}
+                        disabled={deletingFileId === file.id}
+                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete Unwanted File"
+                      >
+                        {deletingFileId === file.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-gray-800 truncate">{file.originalName}</p>
-                    <p className="text-xs text-gray-400">
-                      {formatBytes(file.sizeBytes)}
-                      {file.pageCount && ` · ${file.pageCount} page${file.pageCount !== 1 ? "s" : ""}`}
-                      {file.imageWidth && ` · ${file.imageWidth}×${file.imageHeight}px`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openPreview(file)}
-                      className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => downloadFile(file)}
-                      className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notes */}
@@ -434,7 +464,7 @@ export default function OrderDetailPage() {
               >✕</button>
             </div>
             <div className="flex-1 overflow-auto p-2">
-              {previewFile.mimeType === "application/pdf" ? (
+              {previewFile.mimeType === "application/pdf" || previewFile.originalName.toLowerCase().endsWith(".pdf") ? (
                 <iframe src={previewUrl} className="w-full h-[70vh] rounded-xl" />
               ) : (
                 <img

@@ -69,3 +69,57 @@ export async function GET(
     },
   });
 }
+
+/**
+ * DELETE /api/admin/orders/[id]/files/[fileId]
+ * Deletes an unwanted file from the order and updates page count totals.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; fileId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const shopId = (session.user as any).shopId as string;
+  const { id: orderId, fileId } = await params;
+
+  // Verify order belongs to shop
+  const orderRows = await db
+    .select()
+    .from(orders)
+    .where(and(eq(orders.id, orderId), eq(orders.shopId, shopId)))
+    .limit(1);
+
+  if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+
+  // Mark file as deleted
+  await db
+    .update(orderFiles)
+    .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
+    .where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, orderId)));
+
+  // Recalculate remaining file totals for order
+  const remainingFiles = await db
+    .select({ pageCount: orderFiles.pageCount })
+    .from(orderFiles)
+    .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
+
+  const totalFiles = remainingFiles.length;
+  const totalPages = remainingFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+
+  await db
+    .update(orders)
+    .set({ totalFiles, totalPages, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+
+  await audit({
+    shopId,
+    orderId,
+    userId: session.user.id,
+    action: "file.deleted",
+    details: { fileId },
+  });
+
+  return NextResponse.json({ success: true, totalFiles, totalPages });
+}

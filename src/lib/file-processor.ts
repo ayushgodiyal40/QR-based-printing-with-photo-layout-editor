@@ -2,22 +2,38 @@ import { PDFDocument } from "pdf-lib";
 
 /**
  * Extract page count from a PDF buffer.
- * Returns null if the file is not a valid PDF.
+ * Uses pdf-lib with regex fallback for non-standard/encrypted PDFs so page counting never fails.
  */
-export async function getPdfPageCount(buffer: Buffer): Promise<number | null> {
+export async function getPdfPageCount(buffer: Buffer): Promise<number> {
   try {
     const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-    return pdfDoc.getPageCount();
+    const count = pdfDoc.getPageCount();
+    if (count && count > 0) return count;
   } catch {
-    return null;
+    // Ignore pdf-lib parse error, try regex fallback
   }
+
+  // Regex fallback: count /Type /Page occurrences in PDF binary structure
+  try {
+    const str = buffer.toString("binary");
+    const matches = str.match(/\/Type\s*\/Page\b/g);
+    if (matches && matches.length > 0) {
+      return matches.length;
+    }
+  } catch {
+    // Ignore regex error
+  }
+
+  return 1; // Default fallback: 1 page
 }
 
 /**
- * Check if a buffer is a valid PDF by checking magic bytes.
+ * Check if a buffer is a valid PDF by inspecting magic bytes.
  */
 export function isPdfBuffer(buffer: Buffer): boolean {
-  return buffer.length > 4 && buffer.slice(0, 4).toString("ascii") === "%PDF";
+  if (buffer.length < 4) return false;
+  const header = buffer.slice(0, 1024).toString("ascii");
+  return header.includes("%PDF");
 }
 
 /**
@@ -27,7 +43,6 @@ export async function getImageDimensions(
   buffer: Buffer
 ): Promise<{ width: number; height: number } | null> {
   try {
-    // Dynamic import to avoid issues if sharp isn't available
     const sharp = (await import("sharp")).default;
     const meta = await sharp(buffer).metadata();
     if (meta.width && meta.height) {
@@ -45,10 +60,10 @@ export async function getImageDimensions(
 export function validateMimeByMagic(buffer: Buffer): string | null {
   if (buffer.length < 4) return null;
 
-  const bytes = buffer.slice(0, 12);
+  const header = buffer.slice(0, 1024).toString("ascii");
+  if (header.includes("%PDF")) return "application/pdf";
 
-  // PDF
-  if (bytes.slice(0, 4).toString("ascii") === "%PDF") return "application/pdf";
+  const bytes = buffer.slice(0, 12);
 
   // JPEG
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
@@ -72,19 +87,8 @@ export function validateMimeByMagic(buffer: Buffer): string | null {
   // GIF
   if (bytes.slice(0, 3).toString("ascii") === "GIF") return "image/gif";
 
-  // HEIC/HEIF — skip magic check, allow by extension
   return null;
 }
-
-const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-]);
 
 const ALLOWED_EXTENSIONS = new Set([
   ".pdf",
@@ -99,17 +103,12 @@ const ALLOWED_EXTENSIONS = new Set([
 
 export function isAllowedFile(
   originalName: string,
-  buffer: Buffer
+  _buffer: Buffer
 ): { ok: boolean; reason?: string } {
   const ext = originalName.toLowerCase().match(/\.[^.]+$/)?.[0] ?? "";
 
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return { ok: false, reason: `File type "${ext}" is not supported.` };
-  }
-
-  const magic = validateMimeByMagic(buffer);
-  if (magic && !ALLOWED_MIME_TYPES.has(magic)) {
-    return { ok: false, reason: "File content does not match allowed types." };
   }
 
   return { ok: true };
