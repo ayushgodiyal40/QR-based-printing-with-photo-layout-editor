@@ -59,6 +59,7 @@ export default function OrderDetailPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<any>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
 
   // Editable settings
   const [editStatus, setEditStatus] = useState("");
@@ -156,6 +157,19 @@ export default function OrderDetailPage() {
     setDeletingFileId(null);
   };
 
+  const deleteEntireOrder = async () => {
+    if (!confirm(`Are you sure you want to delete this client order (#${order.token}) permanently?`)) return;
+    setDeletingOrder(true);
+    const res = await fetch(`/api/admin/orders/${id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      router.push("/admin/orders");
+    } else {
+      setDeletingOrder(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center h-64">
@@ -177,26 +191,41 @@ export default function OrderDetailPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-5xl">
-      {/* Back + Header */}
-      <div className="flex items-start gap-4 mb-6">
-        <Link href="/admin/orders" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 shadow-sm mt-1">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-gray-900">{order.orderNumber}</h1>
-            <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>{order.status}</span>
-            {order.priority === "high" && (
-              <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }}>
-                <ArrowUp className="w-3 h-3" /> Priority
-              </span>
-            )}
+      {/* Back + Header + Delete Order Button */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start gap-4">
+          <Link href="/admin/orders" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 shadow-sm mt-1">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black text-gray-900">{order.orderNumber}</h1>
+              <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>{order.status}</span>
+              {order.priority === "high" && (
+                <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }}>
+                  <ArrowUp className="w-3 h-3" /> Priority
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Token <strong className="text-indigo-700">{order.token}</strong> ·{" "}
+              {new Date(order.createdAt).toLocaleString("en-IN")}
+            </p>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Token <strong className="text-indigo-700">{order.token}</strong> ·{" "}
-            {new Date(order.createdAt).toLocaleString("en-IN")}
-          </p>
         </div>
+
+        <button
+          onClick={deleteEntireOrder}
+          disabled={deletingOrder}
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 font-bold text-xs hover:bg-red-100 transition-colors cursor-pointer shadow-sm"
+        >
+          {deletingOrder ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
+          Delete Order
+        </button>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -231,14 +260,14 @@ export default function OrderDetailPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openPreview(file)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                         title="Preview File"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => downloadFile(file)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                         title="Download File"
                       >
                         <Download className="w-4 h-4" />
@@ -246,7 +275,7 @@ export default function OrderDetailPage() {
                       <button
                         onClick={() => deleteSingleFile(file)}
                         disabled={deletingFileId === file.id}
-                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                         title="Delete Unwanted File"
                       >
                         {deletingFileId === file.id ? (
@@ -437,7 +466,7 @@ export default function OrderDetailPage() {
             <button
               onClick={saveChanges}
               disabled={saving}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60 flex items-center justify-center gap-2 shadow-md transition-all"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60 flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               {saving ? "Saving…" : "Save Changes"}

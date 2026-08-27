@@ -139,3 +139,36 @@ export async function PATCH(
 
   return NextResponse.json({ order: updated });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const shopId = (session.user as any).shopId as string;
+  const userId = session.user.id as string;
+  const { id } = await params;
+
+  const orderRows = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.id, id), eq(orders.shopId, shopId)))
+    .limit(1);
+
+  if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
+
+  await db.delete(orders).where(eq(orders.id, id));
+
+  await audit({
+    shopId,
+    orderId: id,
+    userId,
+    action: "order.deleted",
+  });
+
+  notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+
+  return NextResponse.json({ success: true });
+}

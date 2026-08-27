@@ -8,6 +8,7 @@ export type AuditAction =
   | "order.settings_changed"
   | "order.cancelled"
   | "order.completed"
+  | "order.deleted"
   | "order.expired"
   | "file.uploaded"
   | "file.downloaded"

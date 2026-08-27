@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
-  Filter,
   ChevronRight,
   RefreshCw,
   ArrowUp,
-  Clock,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 const STATUSES = ["all", "received", "waiting", "processing", "printing", "completed", "cancelled"];
@@ -24,11 +25,13 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("newest");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -45,6 +48,20 @@ export default function OrdersPage() {
     fetchOrders();
   }, [status, sort]);
 
+  const deleteOrder = async (e: React.MouseEvent, order: any) => {
+    e.stopPropagation(); // Prevents opening the order detail page
+    if (!confirm(`Are you sure you want to delete client order #${order.token} (${order.customerName || "Walk-in"})?`)) {
+      return;
+    }
+
+    setDeletingId(order.id);
+    const res = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    }
+    setDeletingId(null);
+  };
+
   const filtered = orders.filter((o) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -60,7 +77,7 @@ export default function OrdersPage() {
     <div className="p-4 lg:p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-gray-900">Orders</h1>
-        <button onClick={fetchOrders} className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 shadow-sm">
+        <button onClick={fetchOrders} className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 shadow-sm cursor-pointer">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>
@@ -82,7 +99,7 @@ export default function OrdersPage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm"
+          className="px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm cursor-pointer"
         >
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
@@ -95,7 +112,7 @@ export default function OrdersPage() {
           <button
             key={s}
             onClick={() => setStatus(s)}
-            className={`px-3 py-1.5 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-sm font-medium capitalize whitespace-nowrap transition-all cursor-pointer ${
               status === s
                 ? "bg-indigo-600 text-white shadow-md"
                 : "bg-white border border-gray-200 text-gray-600 hover:border-indigo-300"
@@ -116,15 +133,15 @@ export default function OrdersPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-gray-400">No orders found</p>
+            <p className="text-gray-400 font-medium">No orders found</p>
           </div>
         ) : (
           <>
-            {/* Desktop table */}
+            {/* Desktop table - Clicking ANYWHERE on a row opens the order */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100">
+                  <tr className="text-left text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50/50">
                     <th className="px-5 py-3 font-semibold">Token</th>
                     <th className="px-5 py-3 font-semibold">Customer</th>
                     <th className="px-5 py-3 font-semibold">Files</th>
@@ -133,35 +150,39 @@ export default function OrdersPage() {
                     <th className="px-5 py-3 font-semibold">Time</th>
                     <th className="px-5 py-3 font-semibold">Status</th>
                     <th className="px-5 py-3 font-semibold">Price</th>
-                    <th className="px-5 py-3 font-semibold"></th>
+                    <th className="px-5 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors group">
+                    <tr
+                      key={order.id}
+                      onClick={() => router.push(`/admin/orders/${order.id}`)}
+                      className="hover:bg-indigo-50/60 transition-colors cursor-pointer group"
+                    >
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-2">
                           {order.priority === "high" && (
                             <ArrowUp className="w-3 h-3 text-red-500" />
                           )}
-                          <span className="font-black text-indigo-700">{order.token}</span>
+                          <span className="font-black text-indigo-700 text-base">{order.token}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <p className="font-medium text-sm text-gray-800">
+                        <p className="font-bold text-sm text-gray-900 group-hover:text-indigo-600 transition-colors">
                           {order.customerName || "Walk-in"}
                         </p>
                         {order.customerPhone && (
                           <p className="text-xs text-gray-400">{order.customerPhone}</p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-600">{order.totalFiles}</td>
-                      <td className="px-5 py-3 text-sm text-gray-600">{order.totalPages}</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-700">{order.totalFiles}</td>
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-700">{order.totalPages}</td>
                       <td className="px-5 py-3 text-sm">
-                        <span className="font-medium">{order.colorMode === "bw" ? "B&W" : "Color"}</span>
+                        <span className="font-semibold">{order.colorMode === "bw" ? "B&W" : "Color"}</span>
                         <span className="text-gray-400"> · {order.paperSize}</span>
                       </td>
-                      <td className="px-5 py-3 text-sm text-gray-400">
+                      <td className="px-5 py-3 text-sm text-gray-400 font-medium">
                         {new Date(order.createdAt).toLocaleTimeString("en-IN", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -172,16 +193,25 @@ export default function OrdersPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-sm font-medium text-gray-700">
+                      <td className="px-5 py-3 text-sm font-bold text-gray-800">
                         {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
                       </td>
-                      <td className="px-5 py-3">
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500 hover:text-indigo-700"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Link>
+                      <td className="px-5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => deleteOrder(e, order)}
+                            disabled={deletingId === order.id}
+                            className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete Client Order"
+                          >
+                            {deletingId === order.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -192,24 +222,35 @@ export default function OrdersPage() {
             {/* Mobile cards */}
             <div className="lg:hidden divide-y divide-gray-100">
               {filtered.map((order) => (
-                <Link
+                <div
                   key={order.id}
-                  href={`/admin/orders/${order.id}`}
-                  className="flex items-center gap-4 px-4 py-4 hover:bg-gray-50"
+                  onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  className="flex items-center gap-3 px-4 py-4 hover:bg-indigo-50/60 active:bg-indigo-100/50 cursor-pointer"
                 >
-                  <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-indigo-100/70 rounded-xl flex items-center justify-center flex-shrink-0">
                     <span className="font-black text-indigo-700 text-sm">{order.token}</span>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-sm">{order.customerName || "Walk-in"}</p>
-                    <p className="text-xs text-gray-400">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-gray-900 truncate">
+                      {order.customerName || "Walk-in"}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {order.totalFiles} files · {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize}
                     </p>
                   </div>
-                  <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>
-                    {order.status}
-                  </span>
-                </Link>
+                  <div className="flex items-center gap-2">
+                    <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>
+                      {order.status}
+                    </span>
+                    <button
+                      onClick={(e) => deleteOrder(e, order)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      title="Delete Client Order"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </>
