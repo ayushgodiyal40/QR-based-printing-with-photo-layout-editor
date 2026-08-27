@@ -39,3 +39,20 @@ export function generateSlug(name: string): string {
     .replace(/^-|-$/g, "")
     .substring(0, 50);
 }
+
+/**
+ * Get base URL of the app.
+ * Works with APP_URL, NEXT_PUBLIC_APP_URL, or auto-detects from request headers.
+ */
+export function getAppUrl(req?: Request): string {
+  const envUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    return envUrl.replace(/\/$/, "");
+  }
+  if (req) {
+    const proto = req.headers.get("x-forwarded-proto") || "https";
+    const host = req.headers.get("host");
+    if (host) return `${proto}://${host}`;
+  }
+  return "http://localhost:3000";
+}

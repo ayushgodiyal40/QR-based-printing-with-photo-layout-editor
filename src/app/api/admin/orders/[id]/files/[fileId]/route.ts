@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { readFile, getAbsolutePath, fileExists } from "@/lib/storage";
 import { generateSignedToken } from "@/lib/signed-url";
 import { audit } from "@/lib/audit";
+import { getAppUrl } from "@/lib/tokens";
 
 /**
  * GET /api/admin/orders/[id]/files/[fileId]?action=url|download
@@ -45,7 +46,8 @@ export async function GET(
   if (action === "url") {
     // Return a signed token for the file serve endpoint
     const token = generateSignedToken(file.id, id);
-    const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/files/serve?token=${token}`;
+    const baseUrl = getAppUrl(req);
+    const url = `${baseUrl}/api/files/serve?token=${token}`;
     return NextResponse.json({ url, fileName: file.originalName, mimeType: file.mimeType });
   }
 
