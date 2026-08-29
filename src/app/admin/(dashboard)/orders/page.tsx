@@ -33,19 +33,23 @@ export default function OrdersPage() {
   const [sort, setSort] = useState("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     const params = new URLSearchParams({ status, sort, limit: "100" });
     const res = await fetch(`/api/admin/orders?${params}`);
     if (res.ok) {
       const data = await res.json();
       setOrders(data.orders);
     }
-    setLoading(false);
+    if (!isBackground) setLoading(false);
   };
 
   useEffect(() => {
     fetchOrders();
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 4000);
+    return () => clearInterval(interval);
   }, [status, sort]);
 
   const deleteOrder = async (e: React.MouseEvent, order: any) => {
@@ -77,7 +81,7 @@ export default function OrdersPage() {
     <div className="p-4 lg:p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Orders</h1>
-        <button onClick={fetchOrders} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white shadow-sm cursor-pointer">
+        <button onClick={() => fetchOrders()} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white shadow-sm cursor-pointer">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </button>
       </div>

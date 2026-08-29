@@ -72,23 +72,69 @@ export default function OrderDetailPage() {
   const [editSides, setEditSides] = useState("");
   const [editPriority, setEditPriority] = useState("");
 
-  const fetchOrder = async () => {
-    const res = await fetch(`/api/admin/orders/${id}`);
-    if (!res.ok) { setError("Order not found."); setLoading(false); return; }
-    const data = await res.json();
-    setOrder(data.order);
-    setFiles(data.files || []);
-    setNotes(data.notes || []);
-    setEditStatus(data.order.status);
-    setEditColor(data.order.colorMode);
-    setEditPaper(data.order.paperSize);
-    setEditCopies(data.order.copies);
-    setEditSides(data.order.sides);
-    setEditPriority(data.order.priority);
-    setLoading(false);
+  const fetchOrder = async (isBackground = false, retries = 3): Promise<void> => {
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`);
+      if (!res.ok) {
+        if (retries > 0 && res.status === 404) {
+          // Retry after 400ms for newly created orders still committing
+          await new Promise((r) => setTimeout(r, 400));
+          return fetchOrder(isBackground, retries - 1);
+        }
+        if (!isBackground) {
+          setError("Order not found.");
+          setLoading(false);
+        }
+        return;
+      }
+      const data = await res.json();
+      setOrder(data.order);
+      setFiles(data.files || []);
+      setNotes(data.notes || []);
+      if (!isBackground) {
+        setEditStatus(data.order.status);
+        setEditColor(data.order.colorMode);
+        setEditPaper(data.order.paperSize);
+        setEditCopies(data.order.copies);
+        setEditSides(data.order.sides);
+        setEditPriority(data.order.priority);
+        setLoading(false);
+      }
+    } catch {
+      if (!isBackground) {
+        setError("Failed to load order.");
+        setLoading(false);
+      }
+    }
   };
 
-  useEffect(() => { fetchOrder(); }, [id]);
+  useEffect(() => {
+    fetchOrder();
+
+    // Fast polling while files are uploading from the client's phone
+    const pollInterval = setInterval(() => {
+      fetchOrder(true);
+    }, 1500);
+
+    // Live SSE listener
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource("/api/sse/admin");
+      es.addEventListener("order_updated", (e) => {
+        try {
+          const update = JSON.parse(e.data);
+          if (update.orderId === id) {
+            fetchOrder(true);
+          }
+        } catch {}
+      });
+    } catch {}
+
+    return () => {
+      clearInterval(pollInterval);
+      if (es) es.close();
+    };
+  }, [id]);
 
   const saveChanges = async () => {
     setSaving(true);
@@ -281,7 +327,11 @@ export default function OrderDetailPage() {
               )}
             </div>
             {files.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-slate-500 py-4 text-center">No files in this order.</p>
+              <div className="py-8 text-center space-y-2">
+                <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mx-auto" />
+                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">Receiving files from customer phone...</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">Live syncing automatically, no need to refresh</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {files.map((file) => {

@@ -148,8 +148,8 @@ export default function DashboardPage() {
       );
     });
 
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000);
+    // Auto-refresh every 4 seconds for live syncing
+    const interval = setInterval(fetchData, 4000);
 
     return () => {
       es.close();
