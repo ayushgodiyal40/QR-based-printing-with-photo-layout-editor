@@ -6,7 +6,15 @@ const globalForDb = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
-const connectionString = process.env.DATABASE_URL || "";
+function getCleanConnectionString(raw?: string): string {
+  if (!raw) return "";
+  let clean = raw.trim();
+  // Remove channel_binding parameter which can cause TLS handshakes to fail in Node pg
+  clean = clean.replace(/([?&])channel_binding=[^&]+(&|$)/, "$1").replace(/[?&]$/, "");
+  return clean;
+}
+
+const connectionString = getCleanConnectionString(process.env.DATABASE_URL);
 const isNeon = connectionString.includes("neon.tech");
 
 export const pool =
