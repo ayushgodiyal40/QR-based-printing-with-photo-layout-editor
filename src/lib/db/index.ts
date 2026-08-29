@@ -1,11 +1,6 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-
-const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
-  db: any | undefined;
-};
 
 function getCleanConnectionString(raw?: string): string {
   if (!raw) return "";
@@ -17,17 +12,14 @@ function getCleanConnectionString(raw?: string): string {
 
 const connectionString = getCleanConnectionString(process.env.DATABASE_URL);
 
-export const pool =
-  globalForDb.pool ??
-  new Pool({
-    connectionString: connectionString || undefined,
-  });
+// Neon HTTP driver: uses native HTTP fetch (zero socket timeouts, zero connection pooling issues on Vercel)
+const sql = neon(
+  connectionString ||
+    "postgresql://neondb_owner:npg_3klbnsyTg5Vw@ep-long-feather-az6sl6vx-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb"
+);
 
-if (process.env.NODE_ENV !== "production") globalForDb.pool = pool;
-
-export const db = globalForDb.db ?? drizzle(pool, { schema });
-if (process.env.NODE_ENV !== "production") globalForDb.db = db;
-
+export const db = drizzle(sql, { schema });
 export type DB = typeof db;
+
 
 
