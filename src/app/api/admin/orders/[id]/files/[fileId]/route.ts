@@ -106,7 +106,7 @@ export async function DELETE(
     .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
 
   const totalFiles = remainingFiles.length;
-  const totalPages = remainingFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+  const totalPages = remainingFiles.reduce((sum: number, f: any) => sum + (f.pageCount || 1), 0);
 
   await db
     .update(orders)

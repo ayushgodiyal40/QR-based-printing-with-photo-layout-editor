@@ -25,21 +25,21 @@ export async function GET(_req: NextRequest) {
     .where(and(eq(orders.shopId, shopId), gte(orders.createdAt, todayStart)));
 
   const totalOrders = todayOrders.length;
-  const totalPages = todayOrders.reduce((s, o) => s + (o.totalPages || 0), 0);
+  const totalPages = todayOrders.reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
   const totalRevenue = todayOrders.reduce(
-    (s, o) => s + parseFloat(o.estimatedPrice as string || "0"),
+    (s: number, o: any) => s + parseFloat((o.estimatedPrice as string) || "0"),
     0
   );
   const bwPages = todayOrders
-    .filter((o) => o.colorMode === "bw")
-    .reduce((s, o) => s + (o.totalPages || 0), 0);
+    .filter((o: any) => o.colorMode === "bw")
+    .reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
   const colorPages = todayOrders
-    .filter((o) => o.colorMode === "color")
-    .reduce((s, o) => s + (o.totalPages || 0), 0);
-  const pendingOrders = todayOrders.filter((o) =>
+    .filter((o: any) => o.colorMode === "color")
+    .reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
+  const pendingOrders = todayOrders.filter((o: any) =>
     ["received", "waiting", "processing", "printing"].includes(o.status)
   ).length;
-  const completedOrders = todayOrders.filter((o) => o.status === "completed").length;
+  const completedOrders = todayOrders.filter((o: any) => o.status === "completed").length;
 
   // All-time pending count
   const allPendingRows = await db

@@ -127,7 +127,7 @@ export async function POST(
     .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
 
   const totalFiles = allFiles.length;
-  const totalPages = allFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+  const totalPages = allFiles.reduce((sum: number, f: any) => sum + (f.pageCount || 1), 0);
 
   const price = await calculatePrice(order.shopId, {
     pages: totalPages,

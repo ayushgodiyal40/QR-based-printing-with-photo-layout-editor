@@ -48,7 +48,7 @@ export async function GET(
     .from(orderFiles)
     .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)));
 
-  const filesWithUrls = fileRows.map((f) => ({
+  const filesWithUrls = fileRows.map((f: any) => ({
     ...f,
     url: `/api/files/serve?token=${generateSignedToken(f.id, id, 3600)}`,
   }));
