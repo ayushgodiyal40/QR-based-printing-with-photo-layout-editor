@@ -30,6 +30,7 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
   const cleanId = decodeURIComponent(shopId || "");
   
   let shopRows: any[] = [];
+  let dbError: string | null = null;
   try {
     shopRows = await db
       .select({ id: shops.id, name: shops.name, slug: shops.slug })
@@ -53,8 +54,9 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
         .from(shops)
         .limit(1);
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("UploadPage DB query error:", err);
+    dbError = err?.message || String(err);
   }
 
   if (!shopRows.length) {
@@ -65,9 +67,14 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
             <AlertCircle className="w-8 h-8" />
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Shop Not Found</h1>
-          <p className="text-slate-400 text-sm mb-6">
+          <p className="text-slate-400 text-sm mb-4">
             No print shop is registered in the database yet.
           </p>
+          {dbError && (
+            <div className="bg-red-950/60 border border-red-800/80 rounded-xl p-3 text-left text-xs text-red-200 font-mono mb-4 break-all">
+              <strong>Database Connection Notice:</strong> {dbError}
+            </div>
+          )}
           <div className="bg-slate-700/50 rounded-2xl p-4 text-left text-xs text-slate-300 space-y-2 mb-6 border border-slate-600">
             <p className="font-semibold text-slate-200">How to resolve:</p>
             <p>1. Complete the setup wizard at <code className="text-indigo-300">/setup</code>.</p>
