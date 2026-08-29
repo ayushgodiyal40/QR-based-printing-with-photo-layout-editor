@@ -59,6 +59,7 @@ export default function OrderDetailPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<any>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [printingFileId, setPrintingFileId] = useState<string | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
 
   // Editable settings
@@ -142,6 +143,83 @@ export default function OrderDetailPage() {
       a.href = url;
       a.download = file.originalName;
       a.click();
+    }
+  };
+
+  const printFile = async (file: any) => {
+    try {
+      setPrintingFileId(file.id);
+      const isPdf =
+        file.mimeType === "application/pdf" ||
+        file.originalName.toLowerCase().endsWith(".pdf");
+
+      const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=url`);
+      if (!res.ok) throw new Error("Failed to get file URL");
+      const { url } = await res.json();
+
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+
+      if (isPdf) {
+        iframe.src = url;
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              iframe.contentWindow?.focus();
+              iframe.contentWindow?.print();
+            } catch (err) {
+              console.error("Direct PDF print error:", err);
+            } finally {
+              setPrintingFileId(null);
+              setTimeout(() => {
+                try {
+                  document.body.removeChild(iframe);
+                } catch {}
+              }, 60000);
+            }
+          }, 600);
+        };
+      } else {
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${file.originalName}</title>
+                <style>
+                  @page { margin: 0; size: auto; }
+                  body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
+                  img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+                </style>
+              </head>
+              <body>
+                <img src="${url}" onload="setTimeout(function(){ window.focus(); window.print(); }, 200);" />
+              </body>
+            </html>
+          `);
+          doc.close();
+          setTimeout(() => {
+            setPrintingFileId(null);
+            setTimeout(() => {
+              try {
+                document.body.removeChild(iframe);
+              } catch {}
+            }, 60000);
+          }, 1000);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to initiate direct print. Try Preview instead.");
+      setPrintingFileId(null);
     }
   };
 
@@ -258,6 +336,18 @@ export default function OrderDetailPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => printFile(file)}
+                        disabled={printingFileId === file.id}
+                        className="p-2 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        title="Print Directly (No download required)"
+                      >
+                        {printingFileId === file.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                        ) : (
+                          <Printer className="w-4 h-4" />
+                        )}
+                      </button>
                       <button
                         onClick={() => openPreview(file)}
                         className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
