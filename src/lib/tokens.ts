@@ -47,11 +47,15 @@ export function generateSlug(name: string): string {
 export function getAppUrl(req?: Request): string {
   const envUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
   if (envUrl && envUrl.trim() !== "") {
-    return envUrl.replace(/\/$/, "");
+    const formatted = envUrl.startsWith("http") ? envUrl : `https://${envUrl}`;
+    return formatted.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
   }
   if (req) {
     const proto = req.headers.get("x-forwarded-proto") || "https";
-    const host = req.headers.get("host");
+    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
     if (host) return `${proto}://${host}`;
   }
   return "http://localhost:3000";
