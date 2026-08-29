@@ -12,8 +12,10 @@ import {
   Bell,
   BellOff,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface DashboardStats {
   today: {
@@ -68,15 +70,15 @@ function StatsCard({
   color: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
       </div>
-      <p className="text-3xl font-black text-gray-900">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      <p className="text-3xl font-black text-gray-900 dark:text-white">{value}</p>
+      <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{title}</p>
+      {subtitle && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -87,7 +89,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [notifSound, setNotifSound] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   const fetchData = async () => {
@@ -105,7 +106,6 @@ export default function DashboardPage() {
 
   const playNotification = () => {
     if (!notifSound) return;
-    // Create a simple beep using Web Audio API
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
@@ -123,47 +123,38 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
 
-    // Connect SSE
+    // Connect SSE for live order updates
     const es = new EventSource("/api/sse/admin");
     esRef.current = es;
 
     es.addEventListener("new_order", (e) => {
-      const data = JSON.parse(e.data);
-      setOrders((prev) => [data, ...prev.slice(0, 19)]);
-      setNewOrderIds((prev) => new Set([...prev, data.orderId]));
+      const order = JSON.parse(e.data);
+      setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
+      setNewOrderIds((prev) => new Set([...prev, order.id]));
       playNotification();
-
-      // Desktop notification
-      if (Notification.permission === "granted") {
-        new Notification(`New Print Order — #${data.token}`, {
-          body: `Customer: ${data.customerName || "Walk-in"}`,
-          icon: "/favicon.ico",
-        });
-      }
-
-      // Remove highlight after 5s
-      setTimeout(() => {
-        setNewOrderIds((prev) => {
-          const next = new Set(prev);
-          next.delete(data.orderId);
-          return next;
-        });
-      }, 5000);
     });
 
     es.addEventListener("order_updated", (e) => {
-      const data = JSON.parse(e.data);
+      const update = JSON.parse(e.data);
       setOrders((prev) =>
-        prev.map((o) => (o.id === data.orderId ? { ...o, ...data } : o))
+        prev.map((o) => (o.id === update.orderId ? { ...o, ...update } : o))
       );
     });
 
-    // Request notification permission
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    es.addEventListener("order_status", (e) => {
+      const { orderId, status } = JSON.parse(e.data);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+      );
+    });
 
-    return () => es.close();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchData, 30000);
+
+    return () => {
+      es.close();
+      clearInterval(interval);
+    };
   }, [notifSound]);
 
   if (loading) {
@@ -184,8 +175,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               day: "numeric",
@@ -194,16 +185,17 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <button
             onClick={() => setNotifSound(!notifSound)}
             title={notifSound ? "Mute notifications" : "Unmute notifications"}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
           >
             {notifSound ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </button>
           <button
             onClick={fetchData}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -242,16 +234,38 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Quick Launch Photo Studio Banner */}
+      <div className="mb-6 p-4 lg:p-5 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-indigo-700/50">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-6 h-6 text-amber-300" />
+          </div>
+          <div>
+            <h2 className="font-bold text-base text-white">Photo & Passport Print Studio</h2>
+            <p className="text-xs text-indigo-200 mt-0.5">
+              Create passport photo sheets (35×45mm, 2×2&quot;), multi-photo A4 sheets &amp; ID card layouts instantly.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/admin/studio"
+          className="px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-bold text-xs hover:bg-indigo-50 shadow-md transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4 text-indigo-600" />
+          Open Photo Studio
+        </Link>
+      </div>
+
       {/* Live Order Queue */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             Live Order Queue
           </h2>
           <Link
             href="/admin/orders"
-            className="text-sm text-indigo-600 font-medium hover:underline"
+            className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
           >
             View all →
           </Link>
@@ -259,43 +273,43 @@ export default function DashboardPage() {
 
         {orders.length === 0 ? (
           <div className="py-16 text-center">
-            <Printer className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-medium">No pending orders</p>
-            <p className="text-gray-300 text-sm">New orders will appear here instantly</p>
+            <Printer className="w-12 h-12 text-gray-200 dark:text-slate-700 mx-auto mb-3" />
+            <p className="text-gray-400 dark:text-slate-500 font-medium">No pending orders</p>
+            <p className="text-gray-300 dark:text-slate-600 text-sm">New orders will appear here instantly</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 dark:divide-slate-800">
             {orders.map((order) => (
               <Link
                 key={order.id}
                 href={`/admin/orders/${order.id}`}
-                className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group ${
-                  newOrderIds.has(order.id) ? "bg-indigo-50 animate-pulse" : ""
+                className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors group ${
+                  newOrderIds.has(order.id) ? "bg-indigo-50 dark:bg-indigo-950/40 animate-pulse" : ""
                 }`}
               >
                 {/* Token */}
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-black text-indigo-700">{order.token}</span>
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-200/50 dark:border-indigo-800/50">
+                  <span className="text-sm font-black text-indigo-700 dark:text-indigo-300">{order.token}</span>
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900 text-sm">
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm">
                       {order.customerName || "Walk-in"}
                     </p>
                     {order.priority === "high" && (
-                      <span className="text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] bg-red-100 dark:bg-red-950/70 text-red-600 dark:text-red-300 font-bold px-1.5 py-0.5 rounded-full">
                         PRIORITY
                       </span>
                     )}
                     {newOrderIds.has(order.id) && (
-                      <span className="text-[10px] bg-green-100 text-green-600 font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] bg-green-100 dark:bg-green-950/70 text-green-600 dark:text-green-300 font-bold px-1.5 py-0.5 rounded-full">
                         NEW
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">
                     {order.totalFiles} file{order.totalFiles !== 1 ? "s" : ""} ·{" "}
                     {order.totalPages} pages ·{" "}
                     {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize}
@@ -307,7 +321,7 @@ export default function DashboardPage() {
                   <span className={`badge ${STATUS_COLORS[order.status] || ""} mb-1`}>
                     {order.status}
                   </span>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 dark:text-slate-500">
                     {new Date(order.createdAt).toLocaleTimeString("en-IN", {
                       hour: "2-digit",
                       minute: "2-digit",

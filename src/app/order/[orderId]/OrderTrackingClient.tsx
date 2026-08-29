@@ -13,6 +13,8 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
+  Eye,
+  X,
 } from "lucide-react";
 
 type OrderStatus =
@@ -25,6 +27,17 @@ type OrderStatus =
   | "cancelled"
   | "failed"
   | "expired";
+
+interface OrderFile {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  pageCount?: number;
+  imageWidth?: number;
+  imageHeight?: number;
+  url: string;
+}
 
 interface Order {
   id: string;
@@ -40,6 +53,7 @@ interface Order {
   totalPages: number;
   estimatedPrice?: string;
   createdAt: string;
+  files?: OrderFile[];
 }
 
 const STATUS_CONFIG: Record<
@@ -120,6 +134,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [uploadingMore, setUploadingMore] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ name: string; url: string; isPdf: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -320,6 +335,56 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           </div>
         )}
 
+        {/* Sent Files with Preview */}
+        {order.files && order.files.length > 0 && (
+          <div className="glass-card rounded-2xl p-5 mb-5 animate-fade-in">
+            <h2 className="font-semibold text-gray-800 mb-3 flex items-center justify-between text-sm">
+              <span>Your Sent Files</span>
+              <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full">
+                {order.files.length} file{order.files.length !== 1 ? "s" : ""}
+              </span>
+            </h2>
+
+            <div className="space-y-2">
+              {order.files.map((file) => {
+                const isPdf = file.mimeType === "application/pdf" || file.originalName.toLowerCase().endsWith(".pdf");
+                return (
+                  <div
+                    key={file.id}
+                    className="p-3 bg-gray-50 rounded-xl flex items-center justify-between gap-2 border border-gray-100"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                        {isPdf ? (
+                          <FileText className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-blue-500" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-xs text-gray-800 truncate">{file.originalName}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                          {file.pageCount && ` · ${file.pageCount} page${file.pageCount !== 1 ? "s" : ""}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setPreviewTarget({ name: file.originalName, url: file.url, isPdf })}
+                      className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors flex-shrink-0 cursor-pointer"
+                      title="Preview file"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                      Preview
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Order details */}
         <div className="glass-card rounded-2xl p-5 mb-5 animate-fade-in">
           <h2 className="font-semibold text-gray-800 mb-3">Order Summary</h2>
@@ -356,6 +421,53 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
         <p className="text-center text-xs text-gray-400">
           Status updates automatically in real time.
         </p>
+
+        {/* Client-Side File Preview Modal */}
+        {previewTarget && (
+          <div
+            id="tracking-file-preview-modal"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 animate-fade-in"
+            onClick={() => setPreviewTarget(null)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-2 min-w-0">
+                  {previewTarget.isPdf ? (
+                    <FileText className="w-5 h-5 text-red-500 flex-shrink-0" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  )}
+                  <h3 className="font-bold text-sm text-gray-800 truncate">{previewTarget.name}</h3>
+                </div>
+                <button
+                  onClick={() => setPreviewTarget(null)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+                {previewTarget.isPdf ? (
+                  <iframe
+                    src={previewTarget.url}
+                    className="w-full h-[70vh] rounded-lg border-0 bg-white"
+                    title={previewTarget.name}
+                  />
+                ) : (
+                  <img
+                    src={previewTarget.url}
+                    alt={previewTarget.name}
+                    className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

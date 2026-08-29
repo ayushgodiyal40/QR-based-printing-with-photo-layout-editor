@@ -72,31 +72,31 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl space-y-6">
-      <h1 className="text-2xl font-black text-gray-900">Settings</h1>
+      <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
 
       {/* QR Code section */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 className="font-bold text-gray-800 mb-4">Your Shop QR Code</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+        <h2 className="font-bold text-gray-800 dark:text-white mb-4">Your Shop QR Code</h2>
         <div className="flex flex-col lg:flex-row gap-6 items-center">
           {qrData?.qrDataUrl && (
             <div className="flex-shrink-0">
               <img
                 src={qrData.qrDataUrl}
                 alt="Shop QR Code"
-                className="w-48 h-48 rounded-2xl border-4 border-indigo-100"
+                className="w-48 h-48 rounded-2xl border-4 border-indigo-100 dark:border-indigo-900 bg-white"
               />
             </div>
           )}
           <div className="flex-1 space-y-4">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Customer Upload URL</p>
-              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3">
-                <code className="text-sm text-indigo-700 flex-1 break-all">
+              <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">Customer Upload URL</p>
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-gray-100 dark:border-slate-700">
+                <code className="text-sm text-indigo-700 dark:text-indigo-400 flex-1 break-all">
                   {qrData?.uploadUrl}
                 </code>
                 <button
                   onClick={copyUrl}
-                  className="text-gray-400 hover:text-indigo-600 flex-shrink-0"
+                  className="text-gray-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white flex-shrink-0 cursor-pointer"
                   title="Copy URL"
                 >
                   {copied ? "✓" : <Copy className="w-4 h-4" />}
@@ -106,7 +106,7 @@ export default function SettingsPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={downloadQr}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer shadow-sm"
               >
                 <Download className="w-4 h-4" />
                 Download QR (PNG)
@@ -116,14 +116,14 @@ export default function SettingsPage() {
                   href={qrData.uploadUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-medium hover:border-indigo-300 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-sm font-medium hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors shadow-sm"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open Upload Page
                 </a>
               )}
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 dark:text-slate-400">
               Print this QR code and display it at your shop counter. Customers scan it to send files.
             </p>
           </div>
@@ -131,44 +131,44 @@ export default function SettingsPage() {
       </div>
 
       {/* Shop details */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h2 className="font-bold text-gray-800 mb-4">Shop Details</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+        <h2 className="font-bold text-gray-800 dark:text-white mb-4">Shop Details</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Shop Name *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Shop Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Address</label>
             <textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Phone</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">GST Number</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">GST Number</label>
               <input
                 type="text"
                 value={gstNumber}
                 onChange={(e) => setGstNumber(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 placeholder="Optional"
               />
             </div>
@@ -177,7 +177,7 @@ export default function SettingsPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 shadow-md"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 shadow-md cursor-pointer"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {success ? "Saved! ✓" : "Save Settings"}

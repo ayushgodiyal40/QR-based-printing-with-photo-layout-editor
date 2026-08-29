@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { orders, orderFiles } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
+import { generateSignedToken } from "@/lib/signed-url";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,5 +35,26 @@ export async function GET(
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
-  return NextResponse.json(orderRows[0]);
+  const fileRows = await db
+    .select({
+      id: orderFiles.id,
+      originalName: orderFiles.originalName,
+      mimeType: orderFiles.mimeType,
+      sizeBytes: orderFiles.sizeBytes,
+      pageCount: orderFiles.pageCount,
+      imageWidth: orderFiles.imageWidth,
+      imageHeight: orderFiles.imageHeight,
+    })
+    .from(orderFiles)
+    .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)));
+
+  const filesWithUrls = fileRows.map((f) => ({
+    ...f,
+    url: `/api/files/serve?token=${generateSignedToken(f.id, id, 3600)}`,
+  }));
+
+  return NextResponse.json({
+    ...orderRows[0],
+    files: filesWithUrls,
+  });
 }

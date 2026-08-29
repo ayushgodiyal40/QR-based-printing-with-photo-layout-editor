@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ClipboardList,
+  Sparkles,
   Printer,
   DollarSign,
   Settings,
@@ -17,9 +18,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import ThemeToggle from "@/components/ThemeToggle";
+
 const NAV = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+  { href: "/admin/studio", label: "Photo Studio", icon: Sparkles },
   { href: "/admin/printers", label: "Printers", icon: Printer },
   { href: "/admin/pricing", label: "Pricing", icon: DollarSign },
   { href: "/admin/reports", label: "Reports", icon: BarChart2 },
@@ -46,7 +50,8 @@ export default function AdminSidebar({
           </div>
           <span className="font-bold text-white text-sm truncate max-w-[150px]">{shopName}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           {unreadCount > 0 && (
             <div className="relative">
               <Bell className="w-5 h-5 text-gray-400" />
@@ -75,15 +80,18 @@ export default function AdminSidebar({
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:static lg:flex`}
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-800 flex-shrink-0">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
-            <Printer className="w-5 h-5 text-white" />
+        {/* Logo & Theme Toggle */}
+        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 flex-shrink-0">
+          <div className="flex items-center">
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
+              <Printer className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-white text-sm leading-none">{shopName}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Admin Panel</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-white text-sm leading-none">{shopName}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Admin Panel</p>
-          </div>
+          <ThemeToggle />
         </div>
 
         {/* Nav */}

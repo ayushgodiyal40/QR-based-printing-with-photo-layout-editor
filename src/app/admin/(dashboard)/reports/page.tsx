@@ -50,17 +50,17 @@ export default function ReportsPage() {
   return (
     <div className="p-4 lg:p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-black text-gray-900">Reports</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Reports</h1>
         <div className="flex items-center gap-3">
           <select value={period} onChange={(e) => setPeriod(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none shadow-sm">
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none shadow-sm cursor-pointer">
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
             <option value="all">All Time</option>
           </select>
           <button onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-md">
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-md cursor-pointer">
             <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
@@ -75,15 +75,15 @@ export default function ReportsPage() {
           { label: "Revenue", value: `₹${totalRevenue.toFixed(0)}` },
           { label: "B&W / Color", value: `${bwOrders} / ${colorOrders}` },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-2xl font-black text-gray-900">{s.value}</p>
-            <p className="text-xs text-gray-400 mt-1">{s.label}</p>
+          <div key={s.label} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4">
+            <p className="text-2xl font-black text-gray-900 dark:text-white">{s.value}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -92,7 +92,7 @@ export default function ReportsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+                <tr className="text-left text-xs text-gray-400 dark:text-slate-500 uppercase border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40">
                   <th className="px-4 py-3">Order</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Pages</th>
@@ -102,22 +102,22 @@ export default function ReportsPage() {
                   <th className="px-4 py-3">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                 {filtered.slice(0, 100).map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-bold text-indigo-700">{o.orderNumber}</td>
-                    <td className="px-4 py-3 text-gray-700">{o.customerName || "Walk-in"}</td>
-                    <td className="px-4 py-3 text-gray-600">{o.totalPages}</td>
-                    <td className="px-4 py-3 text-gray-600">{o.colorMode === "bw" ? "B&W" : "Color"} · {o.paperSize}</td>
-                    <td className="px-4 py-3 font-medium">{o.estimatedPrice ? `₹${o.estimatedPrice}` : "—"}</td>
-                    <td className="px-4 py-3 capitalize text-xs">{o.status}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
+                  <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <td className="px-4 py-3 font-bold text-indigo-700 dark:text-indigo-400">{o.orderNumber}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-slate-300">{o.customerName || "Walk-in"}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{o.totalPages}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{o.colorMode === "bw" ? "B&W" : "Color"} · {o.paperSize}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{o.estimatedPrice ? `₹${o.estimatedPrice}` : "—"}</td>
+                    <td className="px-4 py-3 capitalize text-xs text-gray-700 dark:text-slate-300">{o.status}</td>
+                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {filtered.length === 0 && (
-              <div className="py-12 text-center text-gray-400">No orders in this period</div>
+              <div className="py-12 text-center text-gray-400 dark:text-slate-500">No orders in this period</div>
             )}
           </div>
         )}

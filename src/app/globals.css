@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --brand-primary: #6366f1;
   --brand-secondary: #8b5cf6;
@@ -168,10 +170,61 @@ body {
 }
 
 @media print {
-  body {
+  @page {
+    size: A4;
     margin: 0 !important;
-    padding: 0 !important;
+  }
+
+  *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: black !important;
+    overflow: visible !important;
+  }
+
+  header, 
+  aside, 
+  footer, 
+  nav,
+  #page-navigation-bar,
+  #print-modal-overlay, 
+  #crop-modal-overlay, 
+  #passport-modal-overlay, 
+  #photo-preview-modal-overlay, 
+  .pointer-events-none, 
+  #a4-margins-guide, 
+  #a4-grid-overlay, 
+  .ring-2, 
+  [id^="handle-"], 
+  [id^="toolbar-"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  #canvas-area-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #a4-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 auto !important;
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

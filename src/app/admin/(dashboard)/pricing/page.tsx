@@ -74,17 +74,17 @@ export default function PricingPage() {
     <div className="p-4 lg:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">Pricing</h1>
-          <p className="text-sm text-gray-500 mt-1">Set your print prices per page</p>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Pricing</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Set your print prices per page</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={fetch_rules} className="p-2 rounded-xl bg-white border border-gray-200 text-gray-500 shadow-sm">
+          <button onClick={fetch_rules} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 shadow-sm cursor-pointer">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
             onClick={saveRules}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 shadow-md"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 shadow-md cursor-pointer"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {success ? "Saved ✓" : "Save"}
@@ -94,11 +94,11 @@ export default function PricingPage() {
 
       <div className="space-y-4">
         {grouped.map(({ paper, rules: paperRules }) => (
-          <div key={paper} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-              <h2 className="font-bold text-gray-800">{paper}</h2>
+          <div key={paper} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/60 border-b border-gray-100 dark:border-slate-800">
+              <h2 className="font-bold text-gray-800 dark:text-white">{paper}</h2>
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-800">
               {paperRules.map((rule, idx) => {
                 const globalIdx = rules.findIndex(
                   (r) => r.paperSize === rule.paperSize && r.colorMode === rule.colorMode && r.sides === rule.sides
@@ -106,35 +106,35 @@ export default function PricingPage() {
                 return (
                   <div key={idx} className="flex items-center justify-between px-5 py-4">
                     <div>
-                      <p className="font-medium text-sm text-gray-800">
+                      <p className="font-medium text-sm text-gray-800 dark:text-slate-200">
                         {rule.colorMode === "bw" ? "Black & White" : "Color"} ·{" "}
                         {rule.sides === "single" ? "Single-sided" : "Double-sided"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500 font-medium">₹</span>
+                      <span className="text-gray-500 dark:text-slate-400 font-medium">₹</span>
                       <input
                         type="number"
                         step="0.5"
                         min="0"
                         value={rule.pricePerPage}
                         onChange={(e) => updateRule(globalIdx, e.target.value)}
-                        className="w-20 px-3 py-2 rounded-xl border border-gray-200 text-sm text-right font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        className="w-20 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm text-right font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       />
-                      <span className="text-gray-400 text-sm">/ page</span>
+                      <span className="text-gray-400 dark:text-slate-500 text-sm">/ page</span>
                     </div>
                   </div>
                 );
               })}
               {paperRules.length === 0 && (
-                <div className="px-5 py-4 text-sm text-gray-400">No rules configured</div>
+                <div className="px-5 py-4 text-sm text-gray-400 dark:text-slate-500">No rules configured</div>
               )}
             </div>
           </div>
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 mt-4 text-center">
+      <p className="text-xs text-gray-400 dark:text-slate-500 mt-4 text-center">
         Changes apply to new orders. Existing orders are not affected.
       </p>
     </div>

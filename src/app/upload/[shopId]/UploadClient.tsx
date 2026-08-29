@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Loader2,
   Zap,
+  Eye,
 } from "lucide-react";
 
 interface Shop {
@@ -125,6 +126,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ name: string; url: string; isPdf: boolean } | null>(null);
 
   // Print settings
   const [colorMode, setColorMode] = useState<ColorMode>("bw");
@@ -376,31 +378,55 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             </p>
           </div>
 
-          {/* Real-time file upload progress list */}
+          {/* Real-time file upload progress list with preview */}
           <div className="text-left bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 border border-gray-100">
             <div className="flex justify-between items-center text-xs border-b border-gray-200 pb-2">
-              <span className="font-bold text-gray-700">Files ({files.length})</span>
+              <span className="font-bold text-gray-700">Files Sent ({files.length})</span>
               <span className="font-bold text-indigo-600">
                 {doneFiles} of {files.length} uploaded
               </span>
             </div>
 
-            {files.map((f) => (
-              <div key={f.id} className="text-xs space-y-1">
-                <div className="flex justify-between text-gray-700">
-                  <span className="truncate font-medium max-w-[180px]">{f.file.name}</span>
-                  {f.status === "done" && <span className="text-green-600 font-bold">✓ Ready</span>}
-                  {f.status === "uploading" && <span className="text-indigo-600 font-bold">{f.progress}%</span>}
-                  {f.status === "pending" && <span className="text-gray-400">Waiting...</span>}
-                  {f.status === "error" && <span className="text-red-500 font-bold">Error</span>}
-                </div>
-                {f.status === "uploading" && (
-                  <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${f.progress}%` }} />
+            {files.map((f) => {
+              const isPdf = f.file.type === "application/pdf" || f.file.name.toLowerCase().endsWith(".pdf");
+              return (
+                <div key={f.id} className="text-xs space-y-1.5 p-2 bg-white rounded-xl border border-gray-100">
+                  <div className="flex items-center justify-between text-gray-700 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-6 h-6 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        {isPdf ? <FileText className="w-3.5 h-3.5 text-red-500" /> : <ImageIcon className="w-3.5 h-3.5 text-blue-500" />}
+                      </div>
+                      <span className="truncate font-medium text-xs">{f.file.name}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = URL.createObjectURL(f.file);
+                          setPreviewTarget({ name: f.file.name, url, isPdf });
+                        }}
+                        className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Preview your uploaded file"
+                      >
+                        <Eye className="w-3 h-3 text-indigo-600" />
+                        Preview
+                      </button>
+
+                      {f.status === "done" && <span className="text-green-600 font-bold text-[10px] bg-green-50 px-1.5 py-0.5 rounded">✓ Ready</span>}
+                      {f.status === "uploading" && <span className="text-indigo-600 font-bold text-[10px]">{f.progress}%</span>}
+                      {f.status === "pending" && <span className="text-gray-400 text-[10px]">Waiting...</span>}
+                      {f.status === "error" && <span className="text-red-500 font-bold text-[10px]">Error</span>}
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  {f.status === "uploading" && (
+                    <div className="progress-bar">
+                      <div className="progress-fill" style={{ width: `${f.progress}%` }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* ADD MORE FILES BUTTON AFTER SUBMIT */}
@@ -428,6 +454,53 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             Track Order Status →
           </button>
         </div>
+
+        {/* Client-Side File Preview Modal */}
+        {previewTarget && (
+          <div
+            id="client-file-preview-modal"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 animate-fade-in"
+            onClick={() => setPreviewTarget(null)}
+          >
+            <div
+              className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-2 min-w-0">
+                  {previewTarget.isPdf ? (
+                    <FileText className="w-5 h-5 text-red-500 flex-shrink-0" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  )}
+                  <h3 className="font-bold text-sm text-gray-800 truncate">{previewTarget.name}</h3>
+                </div>
+                <button
+                  onClick={() => setPreviewTarget(null)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+                {previewTarget.isPdf ? (
+                  <iframe
+                    src={previewTarget.url}
+                    className="w-full h-[70vh] rounded-lg border-0 bg-white"
+                    title={previewTarget.name}
+                  />
+                ) : (
+                  <img
+                    src={previewTarget.url}
+                    alt={previewTarget.name}
+                    className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
