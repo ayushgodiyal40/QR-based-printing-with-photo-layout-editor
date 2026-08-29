@@ -11,10 +11,12 @@ export async function generateMetadata({ params }: { params: Promise<{ shopId: s
   const { shopId } = await params;
   try {
     const cleanId = decodeURIComponent(shopId || "");
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+    const query = isUuid ? eq(shops.id, cleanId) : eq(shops.slug, cleanId);
     const shop = await db
       .select({ name: shops.name })
       .from(shops)
-      .where(or(eq(shops.slug, cleanId), eq(shops.id, cleanId), ilike(shops.slug, cleanId)))
+      .where(query)
       .limit(1);
     return {
       title: shop[0]?.name ? `${shop[0].name} — Send Files for Printing` : "Send Files for Printing",
@@ -28,14 +30,16 @@ export async function generateMetadata({ params }: { params: Promise<{ shopId: s
 export default async function UploadPage({ params }: { params: Promise<{ shopId: string }> }) {
   const { shopId } = await params;
   const cleanId = decodeURIComponent(shopId || "");
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
   
   let shopRows: any[] = [];
   let dbError: string | null = null;
   try {
+    const query = isUuid ? eq(shops.id, cleanId) : eq(shops.slug, cleanId);
     shopRows = await db
       .select({ id: shops.id, name: shops.name, slug: shops.slug })
       .from(shops)
-      .where(or(eq(shops.slug, cleanId), eq(shops.id, cleanId), ilike(shops.slug, cleanId)))
+      .where(query)
       .limit(1);
 
     // If still not found by exact slug/id, fallback to active shop
