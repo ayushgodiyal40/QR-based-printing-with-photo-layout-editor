@@ -462,9 +462,23 @@ export default function StudioWorkstation({
       idx === activePageIndex
         ? {
             ...p,
-            photos: p.photos.map((ph) =>
-              ph.id === cropTarget.placed.id ? { ...ph, crop } : ph
-            ),
+            photos: p.photos.map((ph) => {
+              if (ph.id !== cropTarget.placed.id) return ph;
+              if (!crop) {
+                return { ...ph, crop: undefined };
+              }
+              const origW = cropTarget.photo.originalWidth || 1000;
+              const origH = cropTarget.photo.originalHeight || 1000;
+              const cropW = origW * (crop.width / 100);
+              const cropH = origH * (crop.height / 100);
+              const cropAspect = cropW / cropH;
+              const newH = Math.round((ph.width / cropAspect) * 10) / 10;
+              return {
+                ...ph,
+                crop,
+                height: newH > 0 ? newH : ph.height,
+              };
+            }),
           }
         : p
     );

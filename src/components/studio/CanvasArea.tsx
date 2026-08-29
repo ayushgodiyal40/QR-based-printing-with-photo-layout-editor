@@ -452,19 +452,40 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
             >
               {/* Image Container with Fit/Fill and Crop */}
               <div className="w-full h-full relative overflow-hidden bg-neutral-100 pointer-events-none">
-                <img
-                  src={source.dataUrl}
-                  alt={source.name}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: placed.fitMode === 'fill' ? 'cover' : 'contain',
-                    filter: `brightness(${(100 + brightness) / 100}) contrast(${(100 + contrast) / 100}) ${
-                      isGrayscale ? 'grayscale(100%)' : 'grayscale(0%)'
-                    }`,
-                  }}
-                  className="block select-none"
-                />
+                {placed.crop ? (
+                  <img
+                    src={source.dataUrl}
+                    alt={source.name}
+                    style={{
+                      position: 'absolute',
+                      width: `${(100 / placed.crop.width) * 100}%`,
+                      height: `${(100 / placed.crop.height) * 100}%`,
+                      left: `-${(placed.crop.x / placed.crop.width) * 100}%`,
+                      top: `-${(placed.crop.y / placed.crop.height) * 100}%`,
+                      maxWidth: 'none',
+                      maxHeight: 'none',
+                      objectFit: 'fill',
+                      filter: `brightness(${(100 + brightness) / 100}) contrast(${(100 + contrast) / 100}) ${
+                        isGrayscale ? 'grayscale(100%)' : 'grayscale(0%)'
+                      }`,
+                    }}
+                    className="block select-none pointer-events-none"
+                  />
+                ) : (
+                  <img
+                    src={source.dataUrl}
+                    alt={source.name}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: placed.fitMode === 'fill' ? 'cover' : 'contain',
+                      filter: `brightness(${(100 + brightness) / 100}) contrast(${(100 + contrast) / 100}) ${
+                        isGrayscale ? 'grayscale(100%)' : 'grayscale(0%)'
+                      }`,
+                    }}
+                    className="block select-none pointer-events-none"
+                  />
+                )}
 
                 {/* Thin Cut Border (if enabled for ID/passports) */}
                 {placed.showCutBorder && (
