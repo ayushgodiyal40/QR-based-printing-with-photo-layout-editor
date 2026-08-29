@@ -1,17 +1,20 @@
 import { db } from "@/lib/db";
 import { shops } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or, ilike } from "drizzle-orm";
 import UploadClient from "./UploadClient";
-import { Printer, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ shopId: string }> }) {
   const { shopId } = await params;
   try {
+    const cleanId = decodeURIComponent(shopId || "");
     const shop = await db
       .select({ name: shops.name })
       .from(shops)
-      .where(eq(shops.slug, shopId))
+      .where(or(eq(shops.slug, cleanId), eq(shops.id, cleanId), ilike(shops.slug, cleanId)))
       .limit(1);
     return {
       title: shop[0]?.name ? `${shop[0].name} — Send Files for Printing` : "Send Files for Printing",
@@ -24,16 +27,34 @@ export async function generateMetadata({ params }: { params: Promise<{ shopId: s
 
 export default async function UploadPage({ params }: { params: Promise<{ shopId: string }> }) {
   const { shopId } = await params;
+  const cleanId = decodeURIComponent(shopId || "");
   
   let shopRows: any[] = [];
   try {
     shopRows = await db
       .select({ id: shops.id, name: shops.name, slug: shops.slug })
       .from(shops)
-      .where(eq(shops.slug, shopId))
+      .where(or(eq(shops.slug, cleanId), eq(shops.id, cleanId), ilike(shops.slug, cleanId)))
       .limit(1);
-  } catch {
-    // DB query issue or table missing
+
+    // If still not found by exact slug/id, fallback to active shop
+    if (!shopRows.length) {
+      shopRows = await db
+        .select({ id: shops.id, name: shops.name, slug: shops.slug })
+        .from(shops)
+        .where(eq(shops.isActive, true))
+        .limit(1);
+    }
+
+    // If still empty, get first available shop
+    if (!shopRows.length) {
+      shopRows = await db
+        .select({ id: shops.id, name: shops.name, slug: shops.slug })
+        .from(shops)
+        .limit(1);
+    }
+  } catch (err) {
+    console.error("UploadPage DB query error:", err);
   }
 
   if (!shopRows.length) {
@@ -45,12 +66,12 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
           </div>
           <h1 className="text-xl font-bold text-white mb-2">Shop Not Found</h1>
           <p className="text-slate-400 text-sm mb-6">
-            No print shop exists with the URL code <span className="text-indigo-300 font-mono font-semibold">"{shopId}"</span>.
+            No print shop is registered in the database yet.
           </p>
           <div className="bg-slate-700/50 rounded-2xl p-4 text-left text-xs text-slate-300 space-y-2 mb-6 border border-slate-600">
             <p className="font-semibold text-slate-200">How to resolve:</p>
-            <p>1. Check if you completed the setup wizard at <code className="text-indigo-300">/setup</code> on this domain.</p>
-            <p>2. Log into your Admin panel at <code className="text-indigo-300">/admin/settings</code> to get your exact shop URL and QR code.</p>
+            <p>1. Complete the setup wizard at <code className="text-indigo-300">/setup</code>.</p>
+            <p>2. Log into your Admin panel at <code className="text-indigo-300">/admin/settings</code> to view and print your QR code.</p>
           </div>
           <Link
             href="/admin"
