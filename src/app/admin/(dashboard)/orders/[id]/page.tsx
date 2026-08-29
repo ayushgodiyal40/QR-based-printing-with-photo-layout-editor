@@ -19,7 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
-import printJS from "print-js";
+import { printImage, printPdf } from "@/lib/printUtils";
 
 const STATUS_OPTIONS = [
   { value: "received", label: "Received" },
@@ -159,46 +159,18 @@ export default function OrderDetailPage() {
       const blob = await res.blob();
 
       if (isPdf) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          try {
-            const base64data = (reader.result as string).split(",")[1];
-            printJS({
-              printable: base64data,
-              type: "pdf",
-              base64: true,
-              showModal: false,
-              onLoadingEnd: () => setPrintingFileId(null),
-              onError: (err) => {
-                console.error("PDF Print error:", err);
-                setPrintingFileId(null);
-                alert("Could not trigger direct print. Please use Preview to print.");
-              },
-            });
-            setTimeout(() => setPrintingFileId(null), 1500);
-          } catch (e) {
-            console.error("PDF print conversion error:", e);
-            setPrintingFileId(null);
-          }
-        };
-        reader.readAsDataURL(blob);
+        await printPdf(blob);
       } else {
         const imageUrl = URL.createObjectURL(blob);
-        printJS({
-          printable: imageUrl,
-          type: "image",
-          showModal: false,
-          onLoadingEnd: () => setPrintingFileId(null),
-          onError: (err) => {
-            console.error("Image Print error:", err);
-            setPrintingFileId(null);
-            alert("Could not trigger direct print. Please use Preview to print.");
-          },
+        await printImage(imageUrl, {
+          paperSize: editPaper || order?.paperSize || "A4",
+          colorMode: editColor || order?.colorMode || "bw",
+          copies: editCopies || order?.copies || 1,
         });
-        setTimeout(() => setPrintingFileId(null), 1500);
       }
+      setTimeout(() => setPrintingFileId(null), 1200);
     } catch (err) {
-      console.error(err);
+      console.error("Print execution error:", err);
       alert("Failed to initiate direct print. Try Preview instead.");
       setPrintingFileId(null);
     }
@@ -557,11 +529,27 @@ export default function OrderDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <p className="font-semibold text-gray-800 truncate">{previewFile.originalName}</p>
-              <button
-                onClick={() => { setPreviewUrl(null); setPreviewFile(null); }}
-                className="text-gray-400 hover:text-gray-700"
-              >✕</button>
+              <p className="font-semibold text-gray-800 truncate pr-2">{previewFile.originalName}</p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => printFile(previewFile)}
+                  disabled={printingFileId === previewFile.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+                  title="Print file"
+                >
+                  {printingFileId === previewFile.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Printer className="w-3.5 h-3.5" />
+                  )}
+                  Print
+                </button>
+                <button
+                  onClick={() => { setPreviewUrl(null); setPreviewFile(null); }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                  title="Close preview"
+                >✕</button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-2">
               {previewFile.mimeType === "application/pdf" || previewFile.originalName.toLowerCase().endsWith(".pdf") ? (

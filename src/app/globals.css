@@ -160,3 +160,18 @@ body {
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
 }
+
+/* Print optimizations - removes browser default header (time/title) and footer (URL) */
+@page {
+  margin: 0mm;
+  size: auto;
+}
+
+@media print {
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
