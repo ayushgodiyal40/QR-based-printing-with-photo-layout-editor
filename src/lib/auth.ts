@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET,
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "43fb0d0b8f09fa6106655c68ee188e404bf79ef79f82fa5eb7fc51caeb76451e",
   session: { strategy: "jwt", maxAge: 24 * 60 * 60 }, // 24 hours
   pages: {
     signIn: "/admin",
