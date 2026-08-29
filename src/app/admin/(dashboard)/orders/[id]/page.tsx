@@ -19,6 +19,7 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
+import printJS from "print-js";
 
 const STATUS_OPTIONS = [
   { value: "received", label: "Received" },
@@ -153,68 +154,48 @@ export default function OrderDetailPage() {
         file.mimeType === "application/pdf" ||
         file.originalName.toLowerCase().endsWith(".pdf");
 
-      const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=url`);
-      if (!res.ok) throw new Error("Failed to get file URL");
-      const { url } = await res.json();
-
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      document.body.appendChild(iframe);
+      const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=download`);
+      if (!res.ok) throw new Error("Failed to load file for printing");
+      const blob = await res.blob();
 
       if (isPdf) {
-        iframe.src = url;
-        iframe.onload = () => {
-          setTimeout(() => {
-            try {
-              iframe.contentWindow?.focus();
-              iframe.contentWindow?.print();
-            } catch (err) {
-              console.error("Direct PDF print error:", err);
-            } finally {
-              setPrintingFileId(null);
-              setTimeout(() => {
-                try {
-                  document.body.removeChild(iframe);
-                } catch {}
-              }, 60000);
-            }
-          }, 600);
-        };
-      } else {
-        const doc = iframe.contentWindow?.document;
-        if (doc) {
-          doc.open();
-          doc.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>${file.originalName}</title>
-                <style>
-                  @page { margin: 0; size: auto; }
-                  body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff; }
-                  img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-                </style>
-              </head>
-              <body>
-                <img src="${url}" onload="setTimeout(function(){ window.focus(); window.print(); }, 200);" />
-              </body>
-            </html>
-          `);
-          doc.close();
-          setTimeout(() => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          try {
+            const base64data = (reader.result as string).split(",")[1];
+            printJS({
+              printable: base64data,
+              type: "pdf",
+              base64: true,
+              showModal: false,
+              onLoadingEnd: () => setPrintingFileId(null),
+              onError: (err) => {
+                console.error("PDF Print error:", err);
+                setPrintingFileId(null);
+                alert("Could not trigger direct print. Please use Preview to print.");
+              },
+            });
+            setTimeout(() => setPrintingFileId(null), 1500);
+          } catch (e) {
+            console.error("PDF print conversion error:", e);
             setPrintingFileId(null);
-            setTimeout(() => {
-              try {
-                document.body.removeChild(iframe);
-              } catch {}
-            }, 60000);
-          }, 1000);
-        }
+          }
+        };
+        reader.readAsDataURL(blob);
+      } else {
+        const imageUrl = URL.createObjectURL(blob);
+        printJS({
+          printable: imageUrl,
+          type: "image",
+          showModal: false,
+          onLoadingEnd: () => setPrintingFileId(null),
+          onError: (err) => {
+            console.error("Image Print error:", err);
+            setPrintingFileId(null);
+            alert("Could not trigger direct print. Please use Preview to print.");
+          },
+        });
+        setTimeout(() => setPrintingFileId(null), 1500);
       }
     } catch (err) {
       console.error(err);
