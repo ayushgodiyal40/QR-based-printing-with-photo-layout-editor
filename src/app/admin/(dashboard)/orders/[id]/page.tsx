@@ -366,14 +366,15 @@ export default function OrderDetailPage() {
                         <button
                           onClick={() => printFile(file)}
                           disabled={printingFileId === file.id}
-                          className="p-2 rounded-lg text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
                           title="Print Directly (No download required)"
                         >
                           {printingFileId === file.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <Printer className="w-4 h-4" />
+                            <Printer className="w-3.5 h-3.5" />
                           )}
+                          <span>Print</span>
                         </button>
                         <button
                           onClick={() => openPreview(file)}
