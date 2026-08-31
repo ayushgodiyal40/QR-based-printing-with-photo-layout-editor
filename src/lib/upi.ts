@@ -1,13 +1,16 @@
 /**
  * Helper to build strict, universally compatible NPCI UPI URI strings
- * that work seamlessly across Google Pay, PhonePe, Paytm, BHIM, and Cred.
+ * and direct mobile app deep links for PhonePe, Google Pay, and Paytm.
  */
-export function buildUpiUri(params: {
+
+export interface UpiParams {
   upiId: string;
   payeeName?: string | null;
   amount?: string | number | null;
   orderToken?: string | null;
-}): string {
+}
+
+function getQueryString(params: UpiParams): string {
   const pa = (params.upiId || "").trim();
   if (!pa) return "";
 
@@ -32,5 +35,29 @@ export function buildUpiUri(params: {
   searchParams.set("cu", "INR");
   searchParams.set("tn", tn);
 
-  return `upi://pay?${searchParams.toString()}`;
+  return searchParams.toString();
+}
+
+/** Standard NPCI UPI URI (shows app picker or opens default UPI app) */
+export function buildUpiUri(params: UpiParams): string {
+  const qs = getQueryString(params);
+  return qs ? `upi://pay?${qs}` : "";
+}
+
+/** Direct PhonePe app deep link (opens PhonePe directly) */
+export function buildPhonePeUri(params: UpiParams): string {
+  const qs = getQueryString(params);
+  return qs ? `phonepe://pay?${qs}` : "";
+}
+
+/** Direct Google Pay (Tez) app deep link (opens GPay directly) */
+export function buildGPayUri(params: UpiParams): string {
+  const qs = getQueryString(params);
+  return qs ? `tez://upi/pay?${qs}` : "";
+}
+
+/** Direct Paytm app deep link (opens Paytm directly) */
+export function buildPaytmUri(params: UpiParams): string {
+  const qs = getQueryString(params);
+  return qs ? `paytmmp://pay?${qs}` : "";
 }

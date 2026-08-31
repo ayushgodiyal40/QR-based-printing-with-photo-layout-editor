@@ -24,7 +24,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { buildUpiUri } from "@/lib/upi";
+import { buildUpiUri, buildPhonePeUri, buildGPayUri, buildPaytmUri } from "@/lib/upi";
 
 interface Shop {
   id: string;
@@ -464,37 +464,71 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Dynamic QR Display */}
+                  {/* DIRECT 1-TAP APP LAUNCH BUTTONS */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold text-gray-700 text-center">
+                      Tap below to open your payment app directly:
+                    </p>
+
+                    {/* PhonePe Direct Intent Button */}
+                    <a
+                      href={buildPhonePeUri({
+                        upiId: shop.upiId,
+                        payeeName: shop.upiName || shop.name,
+                        amount: currentDisplayPrice,
+                        orderToken,
+                      })}
+                      className="w-full py-3 px-4 rounded-2xl bg-[#5f259f] hover:bg-[#4d1d82] text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer text-center active:scale-95"
+                    >
+                      <Smartphone className="w-4 h-4 text-purple-200" />
+                      Pay ₹{currentDisplayPrice} via PhonePe (Direct)
+                    </a>
+
+                    {/* Google Pay & Paytm Direct Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <a
+                        href={buildGPayUri({
+                          upiId: shop.upiId,
+                          payeeName: shop.upiName || shop.name,
+                          amount: currentDisplayPrice,
+                          orderToken,
+                        })}
+                        className="py-2.5 px-3 rounded-xl bg-white hover:bg-gray-50 border-2 border-indigo-100 text-gray-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center active:scale-95"
+                      >
+                        <span>🌐</span> Google Pay
+                      </a>
+
+                      <a
+                        href={buildPaytmUri({
+                          upiId: shop.upiId,
+                          payeeName: shop.upiName || shop.name,
+                          amount: currentDisplayPrice,
+                          orderToken,
+                        })}
+                        className="py-2.5 px-3 rounded-xl bg-[#00baf2] hover:bg-[#009fd0] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center active:scale-95"
+                      >
+                        <span>⚡</span> Paytm / UPI
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Dynamic QR Display (For Desktop / Other Phone Scanning) */}
                   {upiQrDataUrl && (
                     <div className="flex flex-col items-center bg-white p-3 rounded-xl border border-purple-100 shadow-inner">
                       <img
                         src={upiQrDataUrl}
                         alt="PhonePe UPI QR"
-                        className="w-44 h-44 rounded-lg bg-white"
+                        className="w-40 h-40 rounded-lg bg-white"
                       />
                       <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
                         <QrCode className="w-3.5 h-3.5 text-purple-600" />
-                        Scan with PhonePe, GPay or Paytm
+                        Or scan QR with any UPI app
                       </p>
                       <p className="text-[10px] text-gray-400">
                         Exact bill ₹{currentDisplayPrice} is pre-filled
                       </p>
                     </div>
                   )}
-
-                  {/* 1-Tap Mobile Payment Deep Link Button */}
-                  <a
-                    href={buildUpiUri({
-                      upiId: shop.upiId,
-                      payeeName: shop.upiName || shop.name,
-                      amount: currentDisplayPrice,
-                      orderToken,
-                    })}
-                    className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer text-center"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    Pay ₹{currentDisplayPrice} via PhonePe / GPay
-                  </a>
 
                   {/* I Have Paid Confirmation */}
                   {!showUtrInput ? (
