@@ -22,6 +22,8 @@ const UpdateShopSchema = z.object({
   address: z.string().max(300).optional(),
   phone: z.string().max(20).optional(),
   gstNumber: z.string().max(20).optional(),
+  upiId: z.string().max(100).optional(),
+  upiName: z.string().max(100).optional(),
 });
 
 export async function PATCH(req: NextRequest) {

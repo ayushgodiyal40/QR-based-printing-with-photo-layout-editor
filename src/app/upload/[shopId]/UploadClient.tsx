@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import QRCode from "qrcode";
 import {
   Upload,
   FileText,
@@ -17,12 +18,19 @@ import {
   Loader2,
   Zap,
   Eye,
+  Smartphone,
+  QrCode,
+  Volume2,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 interface Shop {
   id: string;
   name: string;
   slug: string;
+  upiId?: string | null;
+  upiName?: string | null;
 }
 
 interface UploadedFile {
@@ -154,6 +162,45 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
   const currentDisplayPrice = estimatedPrice || getClientCalculatedPrice();
 
+  // Payment states
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
+  const [hasReportedPaid, setHasReportedPaid] = useState(false);
+  const [utrNumber, setUtrNumber] = useState("");
+  const [showUtrInput, setShowUtrInput] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
+  // Generate dynamic PhonePe / UPI QR code with prefilled amount & order token
+  useEffect(() => {
+    if (step === "submitted" && shop.upiId && currentDisplayPrice && orderToken) {
+      const upiUri = `upi://pay?pa=${encodeURIComponent(shop.upiId)}&pn=${encodeURIComponent(shop.upiName || shop.name)}&am=${encodeURIComponent(currentDisplayPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${orderToken}`)}`;
+      QRCode.toDataURL(upiUri, {
+        width: 360,
+        margin: 1,
+        color: { dark: "#1e1b4b", light: "#ffffff" },
+        errorCorrectionLevel: "M",
+      })
+        .then((url) => setUpiQrDataUrl(url))
+        .catch(() => {});
+    }
+  }, [step, shop.upiId, shop.upiName, shop.name, currentDisplayPrice, orderToken]);
+
+  const handleConfirmPaid = async () => {
+    if (!orderId) return;
+    setIsSubmittingPayment(true);
+    try {
+      await fetch(`/api/orders/${orderId}/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethod: "upi",
+          paymentReference: utrNumber.trim() || undefined,
+        }),
+      });
+      setHasReportedPaid(true);
+    } catch {}
+    setIsSubmittingPayment(false);
+  };
+
   // Auto-fetch price & order status when on submitted screen
   useEffect(() => {
     if (step === "submitted" && orderId) {
@@ -164,6 +211,9 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             const data = await res.json();
             if (data.estimatedPrice) {
               setEstimatedPrice(data.estimatedPrice);
+            }
+            if (data.paymentStatus === "paid") {
+              setHasReportedPaid(true);
             }
           }
         } catch {}
@@ -377,6 +427,101 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               ₹{currentDisplayPrice}
             </p>
           </div>
+
+          {/* OPTIONAL DIRECT PHONEPE / UPI PAYMENT SECTION (Zero-gateway, Soundbox integrated) */}
+          {shop.upiId && (
+            <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-white border-2 border-purple-200/80 rounded-2xl p-4 mb-4 text-left shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
+                    ₹
+                  </div>
+                  <span className="text-xs font-bold text-purple-950 uppercase tracking-wide">
+                    Pay Online (Optional)
+                  </span>
+                </div>
+                <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Volume2 className="w-3 h-3 text-purple-600" />
+                  Soundbox Active
+                </span>
+              </div>
+
+              {hasReportedPaid ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-xs">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    Payment Confirmed!
+                  </div>
+                  <p className="text-[11px] text-emerald-600">
+                    The shop Soundbox will confirm your payment. Show your token at the counter to collect your prints!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Dynamic QR Display */}
+                  {upiQrDataUrl && (
+                    <div className="flex flex-col items-center bg-white p-3 rounded-xl border border-purple-100 shadow-inner">
+                      <img
+                        src={upiQrDataUrl}
+                        alt="PhonePe UPI QR"
+                        className="w-44 h-44 rounded-lg bg-white"
+                      />
+                      <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
+                        <QrCode className="w-3.5 h-3.5 text-purple-600" />
+                        Scan with PhonePe, GPay or Paytm
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        Exact bill ₹{currentDisplayPrice} is pre-filled
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 1-Tap Mobile Payment Deep Link Button */}
+                  <a
+                    href={`upi://pay?pa=${encodeURIComponent(shop.upiId)}&pn=${encodeURIComponent(shop.upiName || shop.name)}&am=${encodeURIComponent(currentDisplayPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${orderToken}`)}`}
+                    className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer text-center"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Pay ₹{currentDisplayPrice} via PhonePe / GPay
+                  </a>
+
+                  {/* I Have Paid Confirmation */}
+                  {!showUtrInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowUtrInput(true)}
+                      className="w-full py-1.5 text-center text-[11px] text-purple-700 hover:text-purple-900 font-semibold cursor-pointer"
+                    >
+                      Already paid? Tap here to confirm
+                    </button>
+                  ) : (
+                    <div className="space-y-2 pt-1 border-t border-purple-100">
+                      <input
+                        type="text"
+                        value={utrNumber}
+                        onChange={(e) => setUtrNumber(e.target.value)}
+                        placeholder="12-digit UPI Ref / UTR (optional)"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg border border-purple-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleConfirmPaid}
+                        disabled={isSubmittingPayment}
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        {isSubmittingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                        Confirm Payment Done
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-gray-500 text-center italic">
+                    💡 You can also pay cash directly at the counter.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Real-time file upload progress list with preview */}
           <div className="text-left bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 border border-gray-100">

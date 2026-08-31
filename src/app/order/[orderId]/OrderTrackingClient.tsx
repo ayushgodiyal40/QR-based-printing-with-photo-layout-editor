@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import QRCode from "qrcode";
 import {
   CheckCircle,
   Clock,
@@ -15,6 +16,10 @@ import {
   Loader2,
   Eye,
   X,
+  Smartphone,
+  QrCode,
+  Volume2,
+  ShieldCheck,
 } from "lucide-react";
 
 type OrderStatus =
@@ -52,6 +57,12 @@ interface Order {
   totalFiles: number;
   totalPages: number;
   estimatedPrice?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  shopName?: string;
+  upiId?: string;
+  upiName?: string;
   createdAt: string;
   files?: OrderFile[];
 }
@@ -138,18 +149,60 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  // Payment states
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
+  const [hasReportedPaid, setHasReportedPaid] = useState(false);
+  const [utrNumber, setUtrNumber] = useState("");
+  const [showUtrInput, setShowUtrInput] = useState(false);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
   const fetchOrder = async () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`);
       if (!res.ok) throw new Error("Order not found.");
       const data = await res.json();
       setOrder(data);
+      if (data.paymentStatus === "paid") {
+        setHasReportedPaid(true);
+      }
       setError(null);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (order && order.upiId && order.estimatedPrice && order.token) {
+      const upiUri = `upi://pay?pa=${encodeURIComponent(order.upiId)}&pn=${encodeURIComponent(order.upiName || order.shopName || "Print Shop")}&am=${encodeURIComponent(order.estimatedPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${order.token}`)}`;
+      QRCode.toDataURL(upiUri, {
+        width: 360,
+        margin: 1,
+        color: { dark: "#1e1b4b", light: "#ffffff" },
+        errorCorrectionLevel: "M",
+      })
+        .then((url) => setUpiQrDataUrl(url))
+        .catch(() => {});
+    }
+  }, [order?.upiId, order?.upiName, order?.shopName, order?.estimatedPrice, order?.token]);
+
+  const handleConfirmPaid = async () => {
+    if (!orderId) return;
+    setIsSubmittingPayment(true);
+    try {
+      await fetch(`/api/orders/${orderId}/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentMethod: "upi",
+          paymentReference: utrNumber.trim() || undefined,
+        }),
+      });
+      setHasReportedPaid(true);
+      fetchOrder();
+    } catch {}
+    setIsSubmittingPayment(false);
   };
 
   useEffect(() => {
@@ -251,6 +304,101 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           </p>
           <p className="text-xs text-emerald-600">Calculated per print settings & pages</p>
         </div>
+
+        {/* Optional Online Payment Card */}
+        {order.upiId && (
+          <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-white border-2 border-purple-200/80 rounded-3xl p-5 mb-5 text-left shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
+                  ₹
+                </div>
+                <span className="text-xs font-bold text-purple-950 uppercase tracking-wide">
+                  Pay Online (Optional)
+                </span>
+              </div>
+              <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Volume2 className="w-3 h-3 text-purple-600" />
+                Soundbox Active
+              </span>
+            </div>
+
+            {hasReportedPaid || order.paymentStatus === "paid" ? (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-1">
+                <div className="flex items-center justify-center gap-1.5 text-emerald-700 font-bold text-sm">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  Payment Confirmed!
+                </div>
+                <p className="text-xs text-emerald-600">
+                  Your payment has been received. Show your token at the counter to collect your prints.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Dynamic QR Display */}
+                {upiQrDataUrl && (
+                  <div className="flex flex-col items-center bg-white p-3 rounded-2xl border border-purple-100 shadow-inner">
+                    <img
+                      src={upiQrDataUrl}
+                      alt="PhonePe UPI QR"
+                      className="w-44 h-44 rounded-lg bg-white"
+                    />
+                    <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
+                      <QrCode className="w-3.5 h-3.5 text-purple-600" />
+                      Scan with PhonePe, GPay or Paytm
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      Exact bill ₹{order.estimatedPrice || "—"} is pre-filled
+                    </p>
+                  </div>
+                )}
+
+                {/* 1-Tap Mobile Payment Deep Link Button */}
+                <a
+                  href={`upi://pay?pa=${encodeURIComponent(order.upiId)}&pn=${encodeURIComponent(order.upiName || order.shopName || "Print Shop")}&am=${encodeURIComponent(order.estimatedPrice || "0")}&cu=INR&tn=${encodeURIComponent(`Token ${order.token}`)}`}
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer text-center"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  Pay ₹{order.estimatedPrice} via PhonePe / GPay
+                </a>
+
+                {/* I Have Paid Confirmation */}
+                {!showUtrInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowUtrInput(true)}
+                    className="w-full py-1.5 text-center text-[11px] text-purple-700 hover:text-purple-900 font-semibold cursor-pointer"
+                  >
+                    Already paid? Tap here to confirm
+                  </button>
+                ) : (
+                  <div className="space-y-2 pt-1 border-t border-purple-100">
+                    <input
+                      type="text"
+                      value={utrNumber}
+                      onChange={(e) => setUtrNumber(e.target.value)}
+                      placeholder="12-digit UPI Ref / UTR (optional)"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-purple-200 bg-white focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleConfirmPaid}
+                      disabled={isSubmittingPayment}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {isSubmittingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                      Confirm Payment Done
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-gray-500 text-center italic">
+                  💡 You can also pay cash directly at the counter.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Status card */}
         <div className={`rounded-3xl p-6 mb-5 animate-fade-in ${statusConfig.bg}`}>

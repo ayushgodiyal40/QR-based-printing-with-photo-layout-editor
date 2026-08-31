@@ -41,6 +41,8 @@ export async function GET(req: NextRequest) {
       totalPages: orders.totalPages,
       estimatedPrice: orders.estimatedPrice,
       paymentStatus: orders.paymentStatus,
+      paymentMethod: orders.paymentMethod,
+      paymentReference: orders.paymentReference,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
     })

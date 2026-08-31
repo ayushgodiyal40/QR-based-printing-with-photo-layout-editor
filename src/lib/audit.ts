@@ -18,7 +18,9 @@ export type AuditAction =
   | "user.login"
   | "user.logout"
   | "user.created"
-  | "shop.created";
+  | "shop.created"
+  | "payment.reported_by_customer"
+  | "payment.status_changed";
 
 export async function audit(params: {
   shopId?: string;

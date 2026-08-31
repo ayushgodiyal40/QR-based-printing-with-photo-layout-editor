@@ -55,6 +55,9 @@ const UpdateOrderSchema = z.object({
   sides: z.enum(["single", "double"]).optional(),
   orientation: z.enum(["auto", "portrait", "landscape"]).optional(),
   pageRange: z.string().max(100).optional(),
+  paymentStatus: z.enum(["unpaid", "paid", "refunded", "not_required"]).optional(),
+  paymentMethod: z.string().max(20).optional(),
+  paymentReference: z.string().max(100).optional(),
   note: z.string().max(500).optional(),
 }).strict();
 
@@ -92,9 +95,11 @@ export async function PATCH(
   if (data.colorMode) updates.colorMode = data.colorMode;
   if (data.paperSize) updates.paperSize = data.paperSize;
   if (data.copies) updates.copies = data.copies;
-  if (data.sides) updates.sides = data.sides;
   if (data.orientation) updates.orientation = data.orientation;
   if (data.pageRange !== undefined) updates.pageRange = data.pageRange;
+  if (data.paymentStatus) updates.paymentStatus = data.paymentStatus;
+  if (data.paymentMethod) updates.paymentMethod = data.paymentMethod;
+  if (data.paymentReference !== undefined) updates.paymentReference = data.paymentReference;
 
   // Recalculate price if print settings changed
   if (data.colorMode || data.paperSize || data.copies || data.sides) {

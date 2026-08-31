@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { orders, orderFiles } from "@/lib/db/schema";
+import { orders, orderFiles, shops } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 import { generateSignedToken } from "@/lib/signed-url";
@@ -13,6 +13,7 @@ export async function GET(
   const orderRows = await db
     .select({
       id: orders.id,
+      shopId: orders.shopId,
       token: orders.token,
       orderNumber: orders.orderNumber,
       status: orders.status,
@@ -24,10 +25,17 @@ export async function GET(
       totalFiles: orders.totalFiles,
       totalPages: orders.totalPages,
       estimatedPrice: orders.estimatedPrice,
+      paymentStatus: orders.paymentStatus,
+      paymentMethod: orders.paymentMethod,
+      paymentReference: orders.paymentReference,
+      shopName: shops.name,
+      upiId: shops.upiId,
+      upiName: shops.upiName,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
     })
     .from(orders)
+    .leftJoin(shops, eq(orders.shopId, shops.id))
     .where(eq(orders.id, id))
     .limit(1);
 

@@ -37,7 +37,7 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
   try {
     const query = isUuid ? eq(shops.id, cleanId) : eq(shops.slug, cleanId);
     shopRows = await db
-      .select({ id: shops.id, name: shops.name, slug: shops.slug })
+      .select({ id: shops.id, name: shops.name, slug: shops.slug, upiId: shops.upiId, upiName: shops.upiName })
       .from(shops)
       .where(query)
       .limit(1);
@@ -45,7 +45,7 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
     // If still not found by exact slug/id, fallback to active shop
     if (!shopRows.length) {
       shopRows = await db
-        .select({ id: shops.id, name: shops.name, slug: shops.slug })
+        .select({ id: shops.id, name: shops.name, slug: shops.slug, upiId: shops.upiId, upiName: shops.upiName })
         .from(shops)
         .where(eq(shops.isActive, true))
         .limit(1);
@@ -54,7 +54,7 @@ export default async function UploadPage({ params }: { params: Promise<{ shopId:
     // If still empty, get first available shop
     if (!shopRows.length) {
       shopRows = await db
-        .select({ id: shops.id, name: shops.name, slug: shops.slug })
+        .select({ id: shops.id, name: shops.name, slug: shops.slug, upiId: shops.upiId, upiName: shops.upiName })
         .from(shops)
         .limit(1);
     }

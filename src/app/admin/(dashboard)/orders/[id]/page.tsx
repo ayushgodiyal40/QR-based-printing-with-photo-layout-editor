@@ -18,6 +18,10 @@ import {
   ArrowUp,
   Clock,
   Sparkles,
+  Volume2,
+  CreditCard,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { printImage, printPdf } from "@/lib/printUtils";
@@ -155,6 +159,22 @@ export default function OrderDetailPage() {
       const data = await res.json();
       setOrder(data.order);
       setNote("");
+      fetchOrder();
+    }
+    setSaving(false);
+  };
+
+  const updatePayment = async (status: "unpaid" | "paid", method?: "cash" | "upi") => {
+    setSaving(true);
+    const res = await fetch(`/api/admin/orders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentStatus: status,
+        ...(method ? { paymentMethod: method } : {}),
+      }),
+    });
+    if (res.ok) {
       fetchOrder();
     }
     setSaving(false);
@@ -457,6 +477,82 @@ export default function OrderDetailPage() {
             {order.customerPhone && (
               <p className="text-sm text-gray-500 dark:text-slate-400">{order.customerPhone}</p>
             )}
+          </div>
+
+          {/* Payment & Soundbox Verification Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-purple-100 dark:border-purple-900/40 shadow-sm p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-1.5 text-sm">
+                <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                Payment Status
+              </h2>
+              <span
+                className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                  order.paymentStatus === "paid"
+                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                    : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                {order.paymentStatus === "paid" ? "Paid ✓" : "Unpaid"}
+              </span>
+            </div>
+
+            <div className="bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs space-y-1.5 border border-gray-100 dark:border-slate-800">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 dark:text-slate-400">Total Amount:</span>
+                <span className="text-sm font-black text-gray-900 dark:text-white">
+                  ₹{order.estimatedPrice || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 dark:text-slate-400">Payment Mode:</span>
+                <span className="font-semibold uppercase text-purple-700 dark:text-purple-300">
+                  {order.paymentMethod === "upi" ? "PhonePe / UPI" : "Cash"}
+                </span>
+              </div>
+              {order.paymentReference && (
+                <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-slate-700">
+                  <span className="text-gray-500 dark:text-slate-400">Ref / UTR:</span>
+                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                    {order.paymentReference}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick 1-click verification buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {order.paymentStatus !== "paid" ? (
+                <>
+                  <button
+                    onClick={() => updatePayment("paid", "upi")}
+                    disabled={saving}
+                    className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                    title="Mark paid via PhonePe Soundbox"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    Paid (PhonePe)
+                  </button>
+                  <button
+                    onClick={() => updatePayment("paid", "cash")}
+                    disabled={saving}
+                    className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                    title="Mark paid via Cash"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Paid (Cash)
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => updatePayment("unpaid")}
+                  disabled={saving}
+                  className="col-span-2 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Mark as Unpaid
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Order settings editor */}

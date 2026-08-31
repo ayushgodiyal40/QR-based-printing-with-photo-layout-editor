@@ -197,8 +197,25 @@ export default function OrdersPage() {
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-sm font-bold text-gray-800 dark:text-slate-200">
-                        {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
+                      <td className="px-5 py-3">
+                        <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                          {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
+                        </p>
+                        <span
+                          className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            order.paymentStatus === "paid"
+                              ? order.paymentMethod === "upi"
+                                ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
+                                : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                              : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"
+                          }`}
+                        >
+                          {order.paymentStatus === "paid"
+                            ? order.paymentMethod === "upi"
+                              ? "Paid (UPI)"
+                              : "Paid (Cash)"
+                            : "Unpaid"}
+                        </span>
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -239,8 +256,17 @@ export default function OrdersPage() {
                       {order.customerName || "Walk-in"}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                      {order.totalFiles} files · {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize}
+                      {order.totalFiles} files · {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize} · {order.estimatedPrice ? `₹${order.estimatedPrice}` : ""}
                     </p>
+                    <span
+                      className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ${
+                        order.paymentStatus === "paid"
+                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                          : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
+                      }`}
+                    >
+                      {order.paymentStatus === "paid" ? `Paid (${order.paymentMethod === "upi" ? "UPI" : "Cash"})` : "Unpaid"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>

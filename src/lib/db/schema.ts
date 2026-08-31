@@ -63,6 +63,8 @@ export const shops = pgTable("shops", {
   address: text("address"),
   phone: varchar("phone", { length: 20 }),
   gstNumber: varchar("gst_number", { length: 20 }),
+  upiId: text("upi_id"),
+  upiName: text("upi_name"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -124,9 +126,11 @@ export const orders = pgTable(
     // Counts
     totalFiles: integer("total_files").notNull().default(0),
     totalPages: integer("total_pages").notNull().default(0),
-    // Pricing
+    // Pricing & Payment
     estimatedPrice: decimal("estimated_price", { precision: 10, scale: 2 }),
     paymentStatus: paymentStatusEnum("payment_status").notNull().default("unpaid"),
+    paymentMethod: varchar("payment_method", { length: 20 }).default("cash"),
+    paymentReference: text("payment_reference"),
     // Idempotency
     idempotencyKey: text("idempotency_key").unique(),
     // Lifecycle
