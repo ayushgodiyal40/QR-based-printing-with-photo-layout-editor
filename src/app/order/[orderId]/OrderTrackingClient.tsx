@@ -21,6 +21,7 @@ import {
   Volume2,
   ShieldCheck,
 } from "lucide-react";
+import { buildUpiUri } from "@/lib/upi";
 
 type OrderStatus =
   | "uploading"
@@ -175,7 +176,12 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     if (order && order.upiId && order.estimatedPrice && order.token) {
-      const upiUri = `upi://pay?pa=${encodeURIComponent(order.upiId)}&pn=${encodeURIComponent(order.upiName || order.shopName || "Print Shop")}&am=${encodeURIComponent(order.estimatedPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${order.token}`)}`;
+      const upiUri = buildUpiUri({
+        upiId: order.upiId,
+        payeeName: order.upiName || order.shopName || "Print Shop",
+        amount: order.estimatedPrice,
+        orderToken: order.token,
+      });
       QRCode.toDataURL(upiUri, {
         width: 360,
         margin: 1,
@@ -355,7 +361,12 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
                 {/* 1-Tap Mobile Payment Deep Link Button */}
                 <a
-                  href={`upi://pay?pa=${encodeURIComponent(order.upiId)}&pn=${encodeURIComponent(order.upiName || order.shopName || "Print Shop")}&am=${encodeURIComponent(order.estimatedPrice || "0")}&cu=INR&tn=${encodeURIComponent(`Token ${order.token}`)}`}
+                  href={buildUpiUri({
+                    upiId: order.upiId,
+                    payeeName: order.upiName || order.shopName || "Print Shop",
+                    amount: order.estimatedPrice || "0",
+                    orderToken: order.token,
+                  })}
                   className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer text-center"
                 >
                   <Smartphone className="w-4 h-4" />

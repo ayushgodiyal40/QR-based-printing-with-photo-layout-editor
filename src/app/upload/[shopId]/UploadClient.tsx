@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { buildUpiUri } from "@/lib/upi";
 
 interface Shop {
   id: string;
@@ -172,7 +173,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   // Generate dynamic PhonePe / UPI QR code with prefilled amount & order token
   useEffect(() => {
     if (step === "submitted" && shop.upiId && currentDisplayPrice && orderToken) {
-      const upiUri = `upi://pay?pa=${encodeURIComponent(shop.upiId)}&pn=${encodeURIComponent(shop.upiName || shop.name)}&am=${encodeURIComponent(currentDisplayPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${orderToken}`)}`;
+      const upiUri = buildUpiUri({
+        upiId: shop.upiId,
+        payeeName: shop.upiName || shop.name,
+        amount: currentDisplayPrice,
+        orderToken,
+      });
       QRCode.toDataURL(upiUri, {
         width: 360,
         margin: 1,
@@ -478,7 +484,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
                   {/* 1-Tap Mobile Payment Deep Link Button */}
                   <a
-                    href={`upi://pay?pa=${encodeURIComponent(shop.upiId)}&pn=${encodeURIComponent(shop.upiName || shop.name)}&am=${encodeURIComponent(currentDisplayPrice)}&cu=INR&tn=${encodeURIComponent(`Token ${orderToken}`)}`}
+                    href={buildUpiUri({
+                      upiId: shop.upiId,
+                      payeeName: shop.upiName || shop.name,
+                      amount: currentDisplayPrice,
+                      orderToken,
+                    })}
                     className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer text-center"
                   >
                     <Smartphone className="w-4 h-4" />
