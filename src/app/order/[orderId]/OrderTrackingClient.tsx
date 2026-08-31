@@ -311,7 +311,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           <p className="text-xs text-emerald-600">Calculated per print settings & pages</p>
         </div>
 
-        {/* Optional Online Payment Card */}
+        {/* Online Payment Card */}
         {order.upiId && (
           <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-white border-2 border-purple-200/80 rounded-3xl p-5 mb-5 text-left shadow-sm relative overflow-hidden">
             <div className="flex items-center justify-between mb-3">
@@ -320,7 +320,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                   ₹
                 </div>
                 <span className="text-xs font-bold text-purple-950 uppercase tracking-wide">
-                  Pay Online (Optional)
+                  Pay Online
                 </span>
               </div>
               <span className="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -341,65 +341,31 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {/* DIRECT 1-TAP APP LAUNCH BUTTONS */}
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold text-gray-700 text-center">
-                    Tap below to open your payment app directly:
-                  </p>
-
-                  {/* PhonePe Direct Intent Button */}
-                  <a
-                    href={buildPhonePeUri({
-                      upiId: order.upiId,
-                      payeeName: order.upiName || order.shopName || "Print Shop",
-                      amount: order.estimatedPrice || "0",
-                      orderToken: order.token,
-                    })}
-                    className="w-full py-3 px-4 rounded-2xl bg-[#5f259f] hover:bg-[#4d1d82] text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer text-center active:scale-95"
-                  >
-                    <Smartphone className="w-4 h-4 text-purple-200" />
-                    Pay ₹{order.estimatedPrice} via PhonePe (Direct)
-                  </a>
-
-                  {/* Google Pay & Paytm Direct Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <a
-                      href={buildGPayUri({
-                        upiId: order.upiId,
-                        payeeName: order.upiName || order.shopName || "Print Shop",
-                        amount: order.estimatedPrice || "0",
-                        orderToken: order.token,
-                      })}
-                      className="py-2.5 px-3 rounded-xl bg-white hover:bg-gray-50 border-2 border-indigo-100 text-gray-800 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center active:scale-95"
-                    >
-                      <span>🌐</span> Google Pay
-                    </a>
-
-                    <a
-                      href={buildPaytmUri({
-                        upiId: order.upiId,
-                        payeeName: order.upiName || order.shopName || "Print Shop",
-                        amount: order.estimatedPrice || "0",
-                        orderToken: order.token,
-                      })}
-                      className="py-2.5 px-3 rounded-xl bg-[#00baf2] hover:bg-[#009fd0] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-center active:scale-95"
-                    >
-                      <span>⚡</span> Paytm / UPI
-                    </a>
-                  </div>
-                </div>
+                {/* Dedicated 1-Tap Universal UPI Payment Button */}
+                <a
+                  href={buildUpiUri({
+                    upiId: order.upiId,
+                    payeeName: order.upiName || order.shopName || "Print Shop",
+                    amount: order.estimatedPrice || "0",
+                    orderToken: order.token,
+                  })}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer text-center active:scale-95"
+                >
+                  <Smartphone className="w-4 h-4 text-white" />
+                  Pay ₹{order.estimatedPrice} via Any UPI App
+                </a>
 
                 {/* Dynamic QR Display */}
                 {upiQrDataUrl && (
                   <div className="flex flex-col items-center bg-white p-3 rounded-xl border border-purple-100 shadow-inner">
                     <img
                       src={upiQrDataUrl}
-                      alt="PhonePe UPI QR"
+                      alt="UPI QR Code"
                       className="w-40 h-40 rounded-lg bg-white"
                     />
                     <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
                       <QrCode className="w-3.5 h-3.5 text-purple-600" />
-                      Or scan QR with any UPI app
+                      Or scan QR with PhonePe, GPay, Paytm
                     </p>
                     <p className="text-[10px] text-gray-400">
                       Exact bill ₹{order.estimatedPrice || "—"} is pre-filled
