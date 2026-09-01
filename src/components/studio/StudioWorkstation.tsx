@@ -23,6 +23,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { PageNavigation } from './PageNavigation';
 import { CropModal } from './CropModal';
 import { PassportModal } from './PassportModal';
+import { MultiCopyModal } from './MultiCopyModal';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
 
 const DEFAULT_LAYOUT_CONFIG: PageLayoutConfig = {
@@ -82,6 +83,8 @@ export default function StudioWorkstation({
   } | null>(null);
   const [isPassportModalOpen, setIsPassportModalOpen] = useState<boolean>(false);
   const [passportTargetPhotoId, setPassportTargetPhotoId] = useState<string | undefined>(undefined);
+  const [isMultiCopyModalOpen, setIsMultiCopyModalOpen] = useState<boolean>(false);
+  const [multiCopyTargetPhotoId, setMultiCopyTargetPhotoId] = useState<string | undefined>(undefined);
   const [previewPhoto, setPreviewPhoto] = useState<SourcePhoto | null>(null);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
 
@@ -519,6 +522,43 @@ export default function StudioWorkstation({
     pushHistory(updatedPages, layoutConfig, 'Generate Passport Sheet');
   };
 
+  // --- Auto-Fit Multi-Copy Generator ---
+  const handleOpenMultiCopyModal = (photoId?: string) => {
+    const activePhotoId =
+      photoId ||
+      (selectedPhotoIds.length > 0
+        ? pages[activePageIndex]?.photos.find((p) => selectedPhotoIds.includes(p.id))?.photoId
+        : undefined);
+    setMultiCopyTargetPhotoId(activePhotoId || sourcePhotos[0]?.id);
+    setIsMultiCopyModalOpen(true);
+  };
+
+  const handleGenerateMultiCopySheet = (
+    generatedPhotos: PlacedPhoto[],
+    createNewPage: boolean
+  ) => {
+    let updatedPages = [...pages];
+
+    if (createNewPage || updatedPages.length === 0) {
+      const newPage: Page = {
+        id: `page-${Date.now()}-${updatedPages.length + 1}`,
+        name: `Page ${updatedPages.length + 1} (Auto-Fit Copies)`,
+        photos: generatedPhotos,
+      };
+      updatedPages.push(newPage);
+      setActivePageIndex(updatedPages.length - 1);
+    } else {
+      updatedPages = updatedPages.map((p, idx) =>
+        idx === activePageIndex ? { ...p, photos: generatedPhotos } : p
+      );
+    }
+
+    setPages(updatedPages);
+    setSelectedPhotoIds([]);
+    setIsMultiCopyModalOpen(false);
+    pushHistory(updatedPages, layoutConfig, 'Auto-Fit Multi-Copy Layout');
+  };
+
   // --- Page Management ---
   const handleAddBlankPage = () => {
     const newPage: Page = {
@@ -755,6 +795,7 @@ export default function StudioWorkstation({
         onAutoArrange={handleAutoArrange}
         onResetPageLayout={handleResetPageLayout}
         onOpenPassportModal={() => handleOpenPassportModal()}
+        onOpenMultiCopyModal={() => handleOpenMultiCopyModal()}
         onApplyPhotoSize={handleApplyToolbarPhotoSize}
         onToggleOrientation={handleToggleOrientation}
         onToggleGrayscale={() => setGlobalGrayscale((prev) => !prev)}
@@ -800,6 +841,7 @@ export default function StudioWorkstation({
             setSourcePhotos(updated);
           }}
           onOpenPassportForPhoto={(pId) => handleOpenPassportModal(pId)}
+          onOpenMultiCopyForPhoto={(pId) => handleOpenMultiCopyModal(pId)}
           onClearAll={() => {
             setSourcePhotos([]);
             setPages([{ id: 'page-empty', name: 'Page 1', photos: [] }]);
@@ -850,6 +892,7 @@ export default function StudioWorkstation({
           onDeletePlacedPhoto={handleDeletePlacedPhoto}
           onMovePhotoToPage={handleMovePhotoToPage}
           onAutoArrange={handleAutoArrange}
+          onOpenMultiCopyModal={(pId) => handleOpenMultiCopyModal(pId)}
         />
       </div>
 
@@ -888,6 +931,17 @@ export default function StudioWorkstation({
           selectedSourcePhotoId={passportTargetPhotoId}
           onGenerate={handleGeneratePassportSheet}
           onClose={() => setIsPassportModalOpen(false)}
+        />
+      )}
+
+      {/* Auto-Fit Multi-Copy Generator Modal */}
+      {isMultiCopyModalOpen && (
+        <MultiCopyModal
+          sourcePhotos={sourcePhotos}
+          selectedSourcePhotoId={multiCopyTargetPhotoId}
+          currentOrientation={layoutConfig.orientation}
+          onGenerate={handleGenerateMultiCopySheet}
+          onClose={() => setIsMultiCopyModalOpen(false)}
         />
       )}
 

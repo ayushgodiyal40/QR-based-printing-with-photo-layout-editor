@@ -15,6 +15,10 @@ import {
   unitToMm,
 } from '@/lib/studio/units';
 import {
+  calculateOptimalCopyDimensions,
+  generateMultiCopyPageLayout,
+} from '@/lib/studio/layoutEngine';
+import {
   Sliders,
   AlignLeft,
   AlignCenter,
@@ -35,6 +39,9 @@ import {
   Maximize2,
   Minimize2,
   Image as ImageIcon,
+  Grid,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 
 interface PropertiesPanelProps {
@@ -54,6 +61,7 @@ interface PropertiesPanelProps {
   onDeletePlacedPhoto: (id: string) => void;
   onMovePhotoToPage: (placedId: string, targetPageIndex: number) => void;
   onAutoArrange: () => void;
+  onOpenMultiCopyModal?: (photoId?: string) => void;
 }
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -73,9 +81,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onDeletePlacedPhoto,
   onMovePhotoToPage,
   onAutoArrange,
+  onOpenMultiCopyModal,
 }) => {
   const [activeTab, setActiveTab] = useState<'layout' | 'photo' | 'adjust'>('layout');
   const [applyToAllPhotos] = useState<boolean>(false);
+  const [inlineCopiesCount, setInlineCopiesCount] = useState<number>(4);
 
   const photoMap = new Map<string, SourcePhoto>();
   sourcePhotos.forEach((p) => photoMap.set(p.id, p));
@@ -670,6 +680,101 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     ))}
                   </div>
                 </div>
+
+                {/* ⚡ Auto-Fit Multi-Copy on Paper */}
+                {primarySource && (
+                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-indigo-500/40 space-y-3 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-semibold text-white text-xs">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Auto-Fit Multi-Copy</span>
+                      </div>
+                      <button
+                        onClick={() => onOpenMultiCopyModal?.(primarySource.id)}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                      >
+                        Advanced →
+                      </button>
+                    </div>
+
+                    {(() => {
+                      const pAspect =
+                        primarySource.aspectRatio ||
+                        (primarySelected.width / primarySelected.height) ||
+                        1;
+                      const previewLayout = calculateOptimalCopyDimensions(
+                        inlineCopiesCount,
+                        pAspect,
+                        layoutConfig.orientation,
+                        layoutConfig.margins,
+                        layoutConfig.gap,
+                        layoutConfig.fitMode
+                      );
+
+                      return (
+                        <div className="space-y-2.5">
+                          {/* Quick preset chips */}
+                          <div className="grid grid-cols-4 gap-1">
+                            {[1, 2, 4, 6, 8, 9, 12, 16].map((num) => (
+                              <button
+                                key={num}
+                                id={`btn-prop-multicopy-${num}`}
+                                onClick={() => setInlineCopiesCount(num)}
+                                className={`py-1 rounded font-mono text-[11px] font-bold border transition-colors cursor-pointer ${
+                                  inlineCopiesCount === num
+                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow'
+                                    : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                                }`}
+                              >
+                                {num}×
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Live Dimension Calculation Preview */}
+                          <div className="bg-neutral-900/90 p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between text-[11px]">
+                            <div>
+                              <div className="text-[9px] text-neutral-400 uppercase font-semibold">Auto Dimensions:</div>
+                              <div className="font-mono font-bold text-white text-xs">
+                                {previewLayout.widthMm} × {previewLayout.heightMm} mm
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[9px] text-neutral-400 font-mono">
+                                {previewLayout.cols} × {previewLayout.rows} grid
+                              </div>
+                              <div className="font-mono font-semibold text-emerald-400 text-[10px]">
+                                {previewLayout.utilizationPercent}% utilized
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <button
+                            id="btn-apply-prop-multicopy"
+                            onClick={() => {
+                              const { photos } = generateMultiCopyPageLayout(
+                                primarySource,
+                                inlineCopiesCount,
+                                layoutConfig.orientation,
+                                layoutConfig.margins,
+                                layoutConfig.gap,
+                                layoutConfig.fitMode,
+                                layoutConfig.cutGuides
+                              );
+                              onUpdatePlacedPhotos(photos);
+                            }}
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Fill Page with {inlineCopiesCount} {inlineCopiesCount === 1 ? 'Copy' : 'Copies'}</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 {/* Exact Dimensions (Width, Height) */}
                 <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-3">

@@ -40,6 +40,7 @@ interface TopToolbarProps {
   onAutoArrange: () => void;
   onResetPageLayout: () => void;
   onOpenPassportModal: () => void;
+  onOpenMultiCopyModal?: () => void;
   onApplyPhotoSize?: (widthMm: number, heightMm: number, name: string) => void;
   onToggleOrientation: () => void;
   onToggleGrayscale: () => void;
@@ -69,6 +70,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
   onAutoArrange,
   onResetPageLayout,
   onOpenPassportModal,
+  onOpenMultiCopyModal,
   onApplyPhotoSize,
   onToggleOrientation,
   onToggleGrayscale,
@@ -221,6 +223,17 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>Auto Arrange</span>
+          </button>
+
+          {/* Auto-Fit Multi-Copy Generator */}
+          <button
+            id="toolbar-multicopy-btn"
+            onClick={onOpenMultiCopyModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            title="Auto-Fit N copies of an image on paper (Full paper utilization)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Auto-Fit Copies</span>
           </button>
 
           {/* Passport Mode Button */}

@@ -14,6 +14,8 @@ import {
   Square,
   Layers,
   Image as ImageIcon,
+  Grid,
+  Sparkles,
 } from 'lucide-react';
 
 interface PhotosSidebarProps {
@@ -28,6 +30,7 @@ interface PhotosSidebarProps {
   onPreviewPhoto: (photo: SourcePhoto) => void;
   onReorderPhoto: (index: number, direction: 'up' | 'down') => void;
   onOpenPassportForPhoto: (photoId: string) => void;
+  onOpenMultiCopyForPhoto?: (photoId: string) => void;
   onLoadSamples?: () => void;
   onClearAll: () => void;
 }
@@ -44,6 +47,7 @@ export const PhotosSidebar: React.FC<PhotosSidebarProps> = ({
   onPreviewPhoto,
   onReorderPhoto,
   onOpenPassportForPhoto,
+  onOpenMultiCopyForPhoto,
   onLoadSamples,
   onClearAll,
 }) => {
@@ -238,22 +242,32 @@ export const PhotosSidebar: React.FC<PhotosSidebarProps> = ({
                     </div>
 
                     {/* Quick Inline Actions */}
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex items-center gap-1 mt-2 flex-wrap">
                       <button
                         id={`sidebar-place-${photo.id}`}
                         onClick={() => onPlacePhotoOnPage(photo)}
                         className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800/60 text-[10px] font-semibold transition-colors cursor-pointer"
-                        title="Add copy to current A4 page"
+                        title="Add 1 copy to current A4 page"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Place</span>
                       </button>
 
                       <button
+                        id={`sidebar-multicopy-${photo.id}`}
+                        onClick={() => onOpenMultiCopyForPhoto?.(photo.id)}
+                        className="flex items-center gap-0.5 px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold transition-colors cursor-pointer shadow-sm"
+                        title="Auto-Fit multiple copies (2x, 4x, 8x, 12x...) to fill page"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-300" />
+                        <span>Multi-Copy</span>
+                      </button>
+
+                      <button
                         id={`sidebar-passport-${photo.id}`}
                         onClick={() => onOpenPassportForPhoto(photo.id)}
                         className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] transition-colors cursor-pointer"
-                        title="Create Passport copies sheet (8x, 16x...)"
+                        title="Create Standard Passport ID sheet"
                       >
                         <Layers className="w-3 h-3 text-indigo-400" />
                         <span>ID</span>

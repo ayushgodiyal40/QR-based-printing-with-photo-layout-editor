@@ -240,3 +240,189 @@ export function generatePassportPageLayout(
 
   return placed;
 }
+
+export interface MultiCopyCalculatedLayout {
+  cols: number;
+  rows: number;
+  widthMm: number;
+  heightMm: number;
+  cellWidthMm: number;
+  cellHeightMm: number;
+  totalBlockWidthMm: number;
+  totalBlockHeightMm: number;
+  startX: number;
+  startY: number;
+  utilizationPercent: number;
+  aspectRatio: number;
+}
+
+/**
+ * Automatically calculate optimal grid (cols x rows) and maximum dimensions (length & breadth)
+ * for N copies on an A4 sheet to maximize paper area utilization.
+ */
+export function calculateOptimalCopyDimensions(
+  count: number,
+  photoAspect: number,
+  orientation: PageOrientation = 'portrait',
+  margins = { top: 10, bottom: 10, left: 10, right: 10 },
+  gapMm = 3,
+  fitMode: 'fit' | 'fill' = 'fit'
+): MultiCopyCalculatedLayout {
+  const safeCount = Math.max(1, count);
+  const safeAspect = photoAspect > 0 ? photoAspect : 1;
+  const { width: pageWidth, height: pageHeight } = getA4Dimensions(orientation);
+
+  const availableW = Math.max(10, pageWidth - margins.left - margins.right);
+  const availableH = Math.max(10, pageHeight - margins.top - margins.bottom);
+  const availableArea = availableW * availableH;
+
+  let bestLayout: MultiCopyCalculatedLayout | null = null;
+  let maxUsableArea = -1;
+
+  // Evaluate every feasible column count from 1 to safeCount
+  for (let c = 1; c <= safeCount; c++) {
+    const r = Math.ceil(safeCount / c);
+    if (c * r < safeCount) continue;
+
+    const cellW = (availableW - (c - 1) * gapMm) / c;
+    const cellH = (availableH - (r - 1) * gapMm) / r;
+
+    if (cellW <= 1 || cellH <= 1) continue;
+
+    let pW = cellW;
+    let pH = cellH;
+
+    if (fitMode === 'fit') {
+      const cellAspect = cellW / cellH;
+      if (safeAspect > cellAspect) {
+        // Photo is wider than cell -> width bound
+        pW = cellW;
+        pH = cellW / safeAspect;
+      } else {
+        // Photo is taller than cell -> height bound
+        pH = cellH;
+        pW = cellH * safeAspect;
+      }
+    } else {
+      // Fill mode: full cell dimensions
+      pW = cellW;
+      pH = cellH;
+    }
+
+    const singlePhotoArea = pW * pH;
+    const totalPhotoArea = safeCount * singlePhotoArea;
+
+    // Pick layout with highest usable photo area on the paper
+    if (
+      totalPhotoArea > maxUsableArea ||
+      (Math.abs(totalPhotoArea - maxUsableArea) < 0.05 &&
+        bestLayout &&
+        Math.abs(c - r) < Math.abs(bestLayout.cols - bestLayout.rows))
+    ) {
+      maxUsableArea = totalPhotoArea;
+
+      const totalBlockW = c * pW + (c - 1) * gapMm;
+      const totalBlockH = r * pH + (r - 1) * gapMm;
+      const startX = margins.left + Math.max(0, (availableW - totalBlockW) / 2);
+      const startY = margins.top + Math.max(0, (availableH - totalBlockH) / 2);
+
+      bestLayout = {
+        cols: c,
+        rows: r,
+        widthMm: Math.round(pW * 10) / 10,
+        heightMm: Math.round(pH * 10) / 10,
+        cellWidthMm: Math.round(cellW * 10) / 10,
+        cellHeightMm: Math.round(cellH * 10) / 10,
+        totalBlockWidthMm: Math.round(totalBlockW * 10) / 10,
+        totalBlockHeightMm: Math.round(totalBlockH * 10) / 10,
+        startX: Math.round(startX * 10) / 10,
+        startY: Math.round(startY * 10) / 10,
+        utilizationPercent: Math.min(
+          100,
+          Math.round((totalPhotoArea / availableArea) * 1000) / 10
+        ),
+        aspectRatio: safeAspect,
+      };
+    }
+  }
+
+  if (!bestLayout) {
+    const cellW = availableW;
+    const cellH = availableH;
+    const pW = fitMode === 'fit' ? Math.min(cellW, cellH * safeAspect) : cellW;
+    const pH = fitMode === 'fit' ? pW / safeAspect : cellH;
+    return {
+      cols: 1,
+      rows: 1,
+      widthMm: Math.round(pW * 10) / 10,
+      heightMm: Math.round(pH * 10) / 10,
+      cellWidthMm: Math.round(cellW * 10) / 10,
+      cellHeightMm: Math.round(cellH * 10) / 10,
+      totalBlockWidthMm: Math.round(pW * 10) / 10,
+      totalBlockHeightMm: Math.round(pH * 10) / 10,
+      startX: margins.left,
+      startY: margins.top,
+      utilizationPercent: 50,
+      aspectRatio: safeAspect,
+    };
+  }
+
+  return bestLayout;
+}
+
+/**
+ * Generate automatically dimensioned and positioned multi-copy layout for a single image on A4 paper.
+ */
+export function generateMultiCopyPageLayout(
+  photo: SourcePhoto,
+  copiesCount: number,
+  orientation: PageOrientation = 'portrait',
+  margins = { top: 10, bottom: 10, left: 10, right: 10 },
+  gapMm = 3,
+  fitMode: 'fit' | 'fill' = 'fit',
+  addCutGuides = true
+): { photos: PlacedPhoto[]; layout: MultiCopyCalculatedLayout } {
+  const photoAspect =
+    photo.aspectRatio || (photo.originalWidth && photo.originalHeight ? photo.originalWidth / photo.originalHeight : 1);
+  const layout = calculateOptimalCopyDimensions(
+    copiesCount,
+    photoAspect,
+    orientation,
+    margins,
+    gapMm,
+    fitMode
+  );
+
+  const placed: PlacedPhoto[] = [];
+  const count = Math.max(1, copiesCount);
+
+  for (let i = 0; i < count; i++) {
+    const r = Math.floor(i / layout.cols);
+    const c = i % layout.cols;
+
+    const x = layout.startX + c * (layout.widthMm + gapMm);
+    const y = layout.startY + r * (layout.heightMm + gapMm);
+
+    placed.push({
+      id: `multicopy-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+      photoId: photo.id,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      width: layout.widthMm,
+      height: layout.heightMm,
+      rotation: 0,
+      fitMode: fitMode,
+      lockAspectRatio: fitMode === 'fit',
+      zIndex: i + 1,
+      showCutBorder: addCutGuides,
+      adjustments: {
+        brightness: 0,
+        contrast: 0,
+        grayscale: false,
+      },
+    });
+  }
+
+  return { photos: placed, layout };
+}
+

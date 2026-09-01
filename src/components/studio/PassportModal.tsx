@@ -2,9 +2,12 @@
 
 import React, { useState } from 'react';
 import { PlacedPhoto, SourcePhoto } from '@/lib/studio/types';
-import { generatePassportPageLayout } from '@/lib/studio/layoutEngine';
+import {
+  generatePassportPageLayout,
+  calculateOptimalCopyDimensions,
+} from '@/lib/studio/layoutEngine';
 import { SIZE_PRESETS } from '@/lib/studio/units';
-import { Check, X, Scissors, Layers } from 'lucide-react';
+import { Check, X, Scissors, Layers, Sparkles } from 'lucide-react';
 
 interface PassportModalProps {
   sourcePhotos: SourcePhoto[];
@@ -37,6 +40,25 @@ export const PassportModal: React.FC<PassportModalProps> = ({
 
   const handleSelectPreset = (name: string) => {
     setSelectedPresetName(name);
+    if (name === 'Auto-Fit Full Page') {
+      const pAspect =
+        selectedPhoto?.aspectRatio ||
+        (selectedPhoto?.originalWidth && selectedPhoto?.originalHeight
+          ? selectedPhoto.originalWidth / selectedPhoto.originalHeight
+          : 35 / 45);
+      const opt = calculateOptimalCopyDimensions(
+        copiesCount,
+        pAspect,
+        'portrait',
+        { top: marginMm, bottom: marginMm, left: marginMm, right: marginMm },
+        gapMm,
+        'fit'
+      );
+      setWidthMm(opt.widthMm);
+      setHeightMm(opt.heightMm);
+      return;
+    }
+
     const preset = SIZE_PRESETS.find((p) => p.name === name);
     if (preset) {
       setWidthMm(preset.widthMm);
@@ -129,6 +151,23 @@ export const PassportModal: React.FC<PassportModalProps> = ({
               2. Standard ID / Print Size Preset
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button
+                id="passport-preset-autofit"
+                onClick={() => handleSelectPreset('Auto-Fit Full Page')}
+                className={`px-3 py-2 text-left rounded-lg border text-xs transition-colors cursor-pointer ${
+                  selectedPresetName === 'Auto-Fit Full Page'
+                    ? 'bg-indigo-900/80 border-indigo-400 text-white ring-1 ring-indigo-400'
+                    : 'bg-indigo-950/40 border-indigo-800/60 text-indigo-200 hover:bg-indigo-950'
+                }`}
+              >
+                <div className="font-bold flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  Auto-Fit Full Page
+                </div>
+                <div className="text-[11px] text-indigo-300/80 mt-0.5">
+                  Max size for {copiesCount} copies
+                </div>
+              </button>
               {SIZE_PRESETS.filter((p) => p.category === 'ID / Passport').map((preset) => (
                 <button
                   key={preset.name}
