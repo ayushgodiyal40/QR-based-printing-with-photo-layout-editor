@@ -360,6 +360,9 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                   <Smartphone className="w-4 h-4 text-white" />
                   Pay ₹{order.estimatedPrice} via Any UPI App
                 </a>
+                <p className="text-[11px] text-center text-purple-700 font-semibold">
+                  Amount to pay: <span className="font-bold text-sm text-purple-900">₹{order.estimatedPrice}</span>
+                </p>
 
                 {/* Dynamic QR Display */}
                 {upiQrDataUrl && (
