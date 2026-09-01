@@ -51,6 +51,43 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function FileThumbnailPreview({ file }: { file: File }) {
+  const isImage =
+    file.type.startsWith("image/") ||
+    [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isImage) {
+      const url = URL.createObjectURL(file);
+      setObjectUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [file, isImage]);
+
+  if (isImage && objectUrl) {
+    return (
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 border border-indigo-100 flex-shrink-0 shadow-xs relative">
+        <img
+          src={objectUrl}
+          alt={file.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  const isPdf =
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  return (
+    <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+      <FileText className="w-6 h-6 text-red-500" />
+    </div>
+  );
+}
+
 function getFileIcon(file: File) {
   if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
     return <FileText className="w-5 h-5 text-red-500" />;
@@ -625,25 +662,80 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               </button>
             </div>
 
-            {files.map((f) => (
-              <div key={f.id} className="glass-card rounded-xl p-3.5 animate-fade-in">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">{getFileIcon(f.file)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate text-xs">{f.file.name}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {formatFileSize(f.file.size)}
-                    </p>
+            {files.map((f) => {
+              const isPdf =
+                f.file.type === "application/pdf" ||
+                f.file.name.toLowerCase().endsWith(".pdf");
+              const isImg =
+                f.file.type.startsWith("image/") ||
+                [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
+                  f.file.name.toLowerCase().endsWith(ext)
+                );
+
+              return (
+                <div
+                  key={f.id}
+                  className="glass-card rounded-2xl p-3 animate-fade-in border border-indigo-50/80 hover:border-indigo-200 transition-all shadow-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Media Thumbnail */}
+                    <div
+                      onClick={() => {
+                        const url = URL.createObjectURL(f.file);
+                        setPreviewTarget({ name: f.file.name, url, isPdf });
+                      }}
+                      className="cursor-pointer"
+                      title="Tap to preview full size"
+                    >
+                      <FileThumbnailPreview file={f.file} />
+                    </div>
+
+                    {/* Media Information */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-gray-800 truncate text-xs">
+                        {f.file.name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500">
+                        <span>{formatFileSize(f.file.size)}</span>
+                        {isPdf && f.pageCount && (
+                          <span className="px-1.5 py-0.2 bg-red-50 text-red-700 font-bold rounded text-[10px]">
+                            {f.pageCount} page{f.pageCount !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {isImg && (
+                          <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 font-bold rounded text-[10px]">
+                            Photo
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Preview button and Remove */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = URL.createObjectURL(f.file);
+                          setPreviewTarget({ name: f.file.name, url, isPdf });
+                        }}
+                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(f.id)}
+                        className="text-gray-300 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => removeFile(f.id)}
-                    className="text-gray-300 hover:text-red-400 transition-colors p-1 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -852,6 +944,54 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 </>
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Preview Modal */}
+      {previewTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setPreviewTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <div className="flex items-center gap-2 min-w-0">
+                {previewTarget.isPdf ? (
+                  <FileText className="w-5 h-5 text-red-500 flex-shrink-0" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                )}
+                <h3 className="font-bold text-sm text-gray-800 truncate">
+                  {previewTarget.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPreviewTarget(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+              {previewTarget.isPdf ? (
+                <iframe
+                  src={previewTarget.url}
+                  className="w-full h-[70vh] rounded-lg border-0 bg-white"
+                  title={previewTarget.name}
+                />
+              ) : (
+                <img
+                  src={previewTarget.url}
+                  alt={previewTarget.name}
+                  className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
