@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import {
   buildUpiUri,
+  buildQrUri,
   extractUpiVpa,
   buildPhonePeUri,
   buildGPayUri,
@@ -179,7 +180,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   // Generate dynamic PhonePe / UPI QR code with prefilled amount & order token
   useEffect(() => {
     if (step === "submitted" && shop.upiId && currentDisplayPrice && orderToken) {
-      const upiUri = buildUpiUri({
+      const upiUri = buildQrUri({
         upiId: shop.upiId,
         payeeName: shop.upiName || shop.name,
         amount: currentDisplayPrice,

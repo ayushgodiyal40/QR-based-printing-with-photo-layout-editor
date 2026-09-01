@@ -29,76 +29,53 @@ export function extractUpiVpa(raw?: string | null): string {
   return trimmed;
 }
 
-function getQueryString(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (!raw) return "";
-
-  // If already a full signed UPI URI (e.g. from a PhonePe Soundbox standee with digital signature)
-  if (raw.startsWith("upi://pay?") || raw.includes("sign=")) {
-    return raw.startsWith("upi://pay?") ? raw.substring("upi://pay?".length) : raw;
-  }
-
-  const pa = raw;
-  const rawName = (params.payeeName || "Print Shop").trim();
-  // Safe payee name: alphanumeric and spaces only, max 30 chars
-  const pn = rawName.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30) || "Print Shop";
-
-  // Clean numeric amount
-  const parsedAmount = parseFloat(String(params.amount || "0"));
-  const am = !isNaN(parsedAmount) && parsedAmount > 0 ? parsedAmount.toFixed(2) : "";
-
-  // Transaction note
-  const rawToken = (params.orderToken || "").trim().replace(/[^a-zA-Z0-9]/g, "");
-  const tn = rawToken ? `Order ${rawToken}` : "Print Order";
-
-  const searchParams = new URLSearchParams();
-  searchParams.set("pa", pa);
-  searchParams.set("pn", pn);
-  if (am) {
-    searchParams.set("am", am);
-  }
-  searchParams.set("cu", "INR");
-  searchParams.set("tn", tn);
-
-  return searchParams.toString();
-}
-
-/** Standard NPCI UPI URI (shows app picker or opens default UPI app) */
-export function buildUpiUri(params: UpiParams): string {
+/** Build camera-scannable QR URI (preserves authentic counter standee signature if present) */
+export function buildQrUri(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (raw.startsWith("upi://pay?")) {
     return raw;
   }
+  return buildUpiUri(params);
+}
+
+function getQueryString(params: UpiParams): string {
+  const raw = (params.upiId || "").trim();
+  if (!raw) return "";
+
+  // Always use clean VPA for web browser intents to avoid mode=02 offline standee intent conflicts
+  const pa = extractUpiVpa(raw);
+  const rawName = (params.payeeName || "PhonePeMerchant").trim();
+  // Safe payee name: alphanumeric and spaces only, max 30 chars
+  const pn = rawName.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30) || "PhonePeMerchant";
+
+  const searchParams = new URLSearchParams();
+  searchParams.set("pa", pa);
+  searchParams.set("pn", pn);
+  searchParams.set("cu", "INR");
+
+  return searchParams.toString();
+}
+
+/** Standard NPCI UPI URI for mobile browser intent */
+export function buildUpiUri(params: UpiParams): string {
   const qs = getQueryString(params);
   return qs ? `upi://pay?${qs}` : "";
 }
 
 /** Direct PhonePe app deep link (opens PhonePe directly) */
 export function buildPhonePeUri(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (raw.startsWith("upi://pay?")) {
-    return raw;
-  }
   const qs = getQueryString(params);
   return qs ? `phonepe://pay?${qs}` : "";
 }
 
 /** Direct Google Pay (Tez) app deep link (opens GPay directly) */
 export function buildGPayUri(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (raw.startsWith("upi://pay?")) {
-    return raw;
-  }
   const qs = getQueryString(params);
   return qs ? `tez://upi/pay?${qs}` : "";
 }
 
 /** Direct Paytm app deep link (opens Paytm directly) */
 export function buildPaytmUri(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (raw.startsWith("upi://pay?")) {
-    return raw;
-  }
   const qs = getQueryString(params);
   return qs ? `paytmmp://pay?${qs}` : "";
 }

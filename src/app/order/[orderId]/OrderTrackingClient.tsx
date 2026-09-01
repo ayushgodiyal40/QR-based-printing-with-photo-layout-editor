@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import {
   buildUpiUri,
+  buildQrUri,
   extractUpiVpa,
   buildPhonePeUri,
   buildGPayUri,
@@ -182,7 +183,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     if (order && order.upiId && order.estimatedPrice && order.token) {
-      const upiUri = buildUpiUri({
+      const upiUri = buildQrUri({
         upiId: order.upiId,
         payeeName: order.upiName || order.shopName || "Print Shop",
         amount: order.estimatedPrice,
