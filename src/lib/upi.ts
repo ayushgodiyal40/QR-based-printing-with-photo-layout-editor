@@ -29,14 +29,34 @@ export function extractUpiVpa(raw?: string | null): string {
   return trimmed;
 }
 
+function appendParamsToSignedUri(
+  baseUri: string,
+  amount?: string | number | null,
+  orderToken?: string | null
+): string {
+  const parsedAmount = parseFloat(String(amount || "0"));
+  const am = !isNaN(parsedAmount) && parsedAmount > 0 ? parsedAmount.toFixed(2) : "";
+  const rawToken = (orderToken || "").trim().replace(/[^a-zA-Z0-9]/g, "");
+  const tn = rawToken ? `Order ${rawToken}` : "";
+
+  let result = baseUri.trim();
+  if (am && !result.includes("am=")) {
+    result += (result.includes("?") ? "&" : "?") + `am=${am}&cu=INR`;
+  }
+  if (tn && !result.includes("tn=")) {
+    result += `&tn=${encodeURIComponent(tn)}`;
+  }
+  return result;
+}
+
 function getQueryString(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (!raw) return "";
 
   // If already a full signed UPI URI (e.g. from a PhonePe Soundbox standee with digital signature)
   if (raw.startsWith("upi://pay?") || raw.includes("sign=")) {
-    // Return the full URI query or raw URI directly
-    return raw.startsWith("upi://pay?") ? raw.substring("upi://pay?".length) : raw;
+    const full = appendParamsToSignedUri(raw, params.amount, params.orderToken);
+    return full.startsWith("upi://pay?") ? full.substring("upi://pay?".length) : full;
   }
 
   const pa = raw;
@@ -68,7 +88,7 @@ function getQueryString(params: UpiParams): string {
 export function buildUpiUri(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (raw.startsWith("upi://pay?")) {
-    return raw;
+    return appendParamsToSignedUri(raw, params.amount, params.orderToken);
   }
   const qs = getQueryString(params);
   return qs ? `upi://pay?${qs}` : "";
@@ -78,7 +98,8 @@ export function buildUpiUri(params: UpiParams): string {
 export function buildPhonePeUri(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (raw.startsWith("upi://pay?")) {
-    return raw;
+    const full = appendParamsToSignedUri(raw, params.amount, params.orderToken);
+    return full.replace(/^upi:\/\/pay\?/, "phonepe://pay?");
   }
   const qs = getQueryString(params);
   return qs ? `phonepe://pay?${qs}` : "";
@@ -88,7 +109,8 @@ export function buildPhonePeUri(params: UpiParams): string {
 export function buildGPayUri(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (raw.startsWith("upi://pay?")) {
-    return raw;
+    const full = appendParamsToSignedUri(raw, params.amount, params.orderToken);
+    return full.replace(/^upi:\/\/pay\?/, "tez://upi/pay?");
   }
   const qs = getQueryString(params);
   return qs ? `tez://upi/pay?${qs}` : "";
@@ -98,7 +120,8 @@ export function buildGPayUri(params: UpiParams): string {
 export function buildPaytmUri(params: UpiParams): string {
   const raw = (params.upiId || "").trim();
   if (raw.startsWith("upi://pay?")) {
-    return raw;
+    const full = appendParamsToSignedUri(raw, params.amount, params.orderToken);
+    return full.replace(/^upi:\/\/pay\?/, "paytmmp://pay?");
   }
   const qs = getQueryString(params);
   return qs ? `paytmmp://pay?${qs}` : "";
