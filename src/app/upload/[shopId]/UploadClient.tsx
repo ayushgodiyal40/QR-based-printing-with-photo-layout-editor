@@ -143,19 +143,9 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
-  // Calculate live client-side preview price
   const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
   const doneFiles = files.filter((f) => f.status === "done").length;
-
-  const getClientCalculatedPrice = () => {
-    let rate = colorMode === "bw" ? 1.0 : 5.0;
-    if (paperSize === "A3") rate *= 2;
-    if (paperSize === "Legal") rate *= 1.5;
-    const sheets = sides === "double" ? Math.ceil(totalPages / 2) : totalPages;
-    return (rate * sheets * copies).toFixed(2);
-  };
-
-  const currentDisplayPrice = estimatedPrice || getClientCalculatedPrice();
+  const isCalculating = !estimatedPrice || files.some((f) => f.status === "pending" || f.status === "uploading");
 
   // Auto-fetch price & order status when on submitted screen
   useEffect(() => {
@@ -400,16 +390,30 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             <p className="text-xs opacity-75">Tell this number to the operator</p>
           </div>
 
-          {/* ESTIMATED PRICE BOX (CALCULATED & VISIBLE ON FIRST TOKEN SCREEN) */}
-          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm">
-            <div className="text-left">
-              <p className="text-xs text-emerald-700 font-bold uppercase tracking-wide">Estimated Price</p>
-              <p className="text-xs text-emerald-600">Calculated for {totalPages} page{totalPages !== 1 ? "s" : ""}</p>
+          {/* ESTIMATED PRICE BOX (CALCULATING ANIMATION OR FINALIZED PRICE) */}
+          {isCalculating ? (
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200/80 rounded-2xl p-4 mb-4 text-center shadow-sm animate-pulse">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+                <p className="text-xs text-indigo-950 font-bold uppercase tracking-wide">
+                  Calculating Total Bill...
+                </p>
+              </div>
+              <p className="text-[11px] text-indigo-600 font-medium">
+                Counting pages & applying pricing rules...
+              </p>
             </div>
-            <p className="text-3xl font-black text-emerald-800">
-              ₹{currentDisplayPrice}
-            </p>
-          </div>
+          ) : (
+            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-sm animate-fade-in">
+              <div className="text-left">
+                <p className="text-xs text-emerald-700 font-bold uppercase tracking-wide">Estimated Price</p>
+                <p className="text-xs text-emerald-600">Calculated for {totalPages} page{totalPages !== 1 ? "s" : ""}</p>
+              </div>
+              <p className="text-3xl font-black text-emerald-800">
+                ₹{estimatedPrice}
+              </p>
+            </div>
+          )}
 
           {/* Shop Counter Payment Card */}
           <div className="bg-white rounded-2xl p-4 mb-4 border border-indigo-100 shadow-sm text-center space-y-2">
@@ -650,17 +654,6 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               <Printer className="w-4 h-4 text-indigo-500" />
               Print Requirements
             </h2>
-
-            {/* Estimated Price Live Preview Box on Form */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Estimated Cost</p>
-                <p className="text-[11px] text-emerald-600">
-                  {totalPages} page{totalPages !== 1 ? "s" : ""} · {colorMode === "bw" ? "B&W" : "Color"} · {copies} cop{copies > 1 ? "ies" : "y"}
-                </p>
-              </div>
-              <p className="text-2xl font-black text-emerald-800">₹{currentDisplayPrice}</p>
-            </div>
 
             {/* Color */}
             <div>

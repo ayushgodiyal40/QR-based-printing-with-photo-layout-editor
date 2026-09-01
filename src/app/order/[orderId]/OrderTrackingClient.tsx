@@ -249,14 +249,28 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           <p className="text-xs text-gray-400 mt-1">{order.orderNumber}</p>
         </div>
 
-        {/* Price Card */}
-        <div className="bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-5 mb-5 shadow-sm text-center">
-          <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-1">Estimated Total Price</p>
-          <p className="text-4xl font-black text-emerald-800 mb-1">
-            {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
-          </p>
-          <p className="text-xs text-emerald-600">Calculated per print settings & pages</p>
-        </div>
+        {/* Price Card (Calculating Animation or Finalized Price) */}
+        {!order.estimatedPrice || uploadingMore ? (
+          <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200/80 rounded-3xl p-5 mb-5 text-center shadow-sm animate-pulse">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+              <p className="text-xs text-indigo-950 font-bold uppercase tracking-wide">
+                Calculating Total Bill...
+              </p>
+            </div>
+            <p className="text-[11px] text-indigo-600 font-medium">
+              Counting pages & applying pricing rules...
+            </p>
+          </div>
+        ) : (
+          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-5 mb-5 shadow-sm text-center animate-fade-in">
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-1">Estimated Total Price</p>
+            <p className="text-4xl font-black text-emerald-800 mb-1">
+              ₹{order.estimatedPrice}
+            </p>
+            <p className="text-xs text-emerald-600">Calculated per print settings & pages</p>
+          </div>
+        )}
 
         {/* Counter Payment Card */}
         <div className="bg-white/90 border border-indigo-100 rounded-3xl p-5 mb-5 shadow-sm text-center space-y-2 animate-fade-in">
