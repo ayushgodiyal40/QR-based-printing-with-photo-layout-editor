@@ -21,7 +21,13 @@ import {
   Volume2,
   ShieldCheck,
 } from "lucide-react";
-import { buildUpiUri, buildPhonePeUri, buildGPayUri, buildPaytmUri } from "@/lib/upi";
+import {
+  buildUpiUri,
+  extractUpiVpa,
+  buildPhonePeUri,
+  buildGPayUri,
+  buildPaytmUri,
+} from "@/lib/upi";
 
 type OrderStatus =
   | "uploading"
@@ -365,10 +371,10 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                     />
                     <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
                       <QrCode className="w-3.5 h-3.5 text-purple-600" />
-                      Or scan QR with PhonePe, GPay, Paytm
+                      Scan with PhonePe, GPay, Paytm
                     </p>
-                    <p className="text-[10px] text-gray-400">
-                      Exact bill ₹{order.estimatedPrice || "—"} is pre-filled
+                    <p className="text-[10px] text-gray-500 font-mono">
+                      UPI ID: {extractUpiVpa(order.upiId)}
                     </p>
                   </div>
                 )}

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Download, Copy, ExternalLink, Save } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, Download, Copy, ExternalLink, Save, CheckCircle, Volume2, ShieldCheck, QrCode, Upload } from "lucide-react";
+import { extractUpiVpa } from "@/lib/upi";
 
 export default function SettingsPage() {
   const [shop, setShop] = useState<any>(null);
@@ -202,16 +203,28 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-4">
+          {upiId.includes("sign=") && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                <span>Verified PhonePe Soundbox Standee Active ({extractUpiVpa(upiId)})</span>
+              </div>
+              <span className="text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold px-2 py-0.5 rounded-full">
+                Cryptographically Signed ✓
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                PhonePe / UPI ID (VPA) *
+                PhonePe / UPI Handle (VPA) *
               </label>
               <input
                 type="text"
-                value={upiId}
+                value={upiId.includes("sign=") ? extractUpiVpa(upiId) : upiId}
                 onChange={(e) => setUpiId(e.target.value)}
-                placeholder="e.g. 9876543210@ybl or merchant@axl"
+                placeholder="e.g. Q865308672@ybl or 9876543210@ybl"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
               <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
@@ -226,7 +239,7 @@ export default function SettingsPage() {
                 type="text"
                 value={upiName}
                 onChange={(e) => setUpiName(e.target.value)}
-                placeholder="e.g. Ayush Xerox & Print Studio"
+                placeholder="e.g. Godiyal General Store"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
               <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
@@ -242,7 +255,7 @@ export default function SettingsPage() {
               <ul className="list-disc list-inside space-y-0.5 text-purple-800 dark:text-purple-300">
                 <li>Files and orders are sent <strong>immediately</strong> without blocking.</li>
                 <li>Cash payers can just show their token and pay cash at the counter.</li>
-                <li>Customers who prefer online payment will see a prefilled dynamic QR on their token screen to pay in 1-tap.</li>
+                <li>Customers who prefer online payment can scan your verified PhonePe Soundbox QR directly on screen or tap the pay button.</li>
                 <li>Your <strong>PhonePe Soundbox</strong> in the shop will loudly announce: <em>&quot;PhonePe par ₹X prapt hue!&quot;</em></li>
               </ul>
             </div>

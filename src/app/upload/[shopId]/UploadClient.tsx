@@ -24,7 +24,13 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { buildUpiUri, buildPhonePeUri, buildGPayUri, buildPaytmUri } from "@/lib/upi";
+import {
+  buildUpiUri,
+  extractUpiVpa,
+  buildPhonePeUri,
+  buildGPayUri,
+  buildPaytmUri,
+} from "@/lib/upi";
 
 interface Shop {
   id: string;
@@ -488,10 +494,10 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                       />
                       <p className="text-[11px] font-semibold text-gray-700 mt-1.5 flex items-center gap-1">
                         <QrCode className="w-3.5 h-3.5 text-purple-600" />
-                        Or scan QR with PhonePe, GPay, Paytm
+                        Scan with PhonePe, GPay, Paytm
                       </p>
-                      <p className="text-[10px] text-gray-400">
-                        Exact bill ₹{currentDisplayPrice} is pre-filled
+                      <p className="text-[10px] text-gray-500 font-mono">
+                        UPI ID: {extractUpiVpa(shop.upiId)}
                       </p>
                     </div>
                   )}
