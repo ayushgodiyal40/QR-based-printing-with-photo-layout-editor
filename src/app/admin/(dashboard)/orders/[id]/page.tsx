@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { printImage, printPdf } from "@/lib/printUtils";
+import PdfViewer from "@/components/PdfViewer";
 
 const STATUS_OPTIONS = [
   { value: "received", label: "Received" },
@@ -723,15 +724,21 @@ export default function OrderDetailPage() {
                 >✕</button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-2">
+            <div className="flex-1 overflow-hidden flex flex-col bg-gray-950 min-h-[320px] h-[72vh] rounded-b-2xl">
               {previewFile.mimeType === "application/pdf" || previewFile.originalName.toLowerCase().endsWith(".pdf") ? (
-                <iframe src={previewUrl} className="w-full h-[70vh] rounded-xl" />
-              ) : (
-                <img
-                  src={previewUrl}
-                  alt={previewFile.originalName}
-                  className="max-w-full max-h-[70vh] object-contain mx-auto rounded-xl"
+                <PdfViewer
+                  url={previewUrl}
+                  fileName={previewFile.originalName}
+                  className="w-full h-full"
                 />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center p-2">
+                  <img
+                    src={previewUrl}
+                    alt={previewFile.originalName}
+                    className="max-w-full max-h-[70vh] object-contain mx-auto rounded-xl"
+                  />
+                </div>
               )}
             </div>
           </div>

@@ -19,6 +19,7 @@ import {
   Eye,
   Sparkles,
 } from "lucide-react";
+import PdfViewer from "@/components/PdfViewer";
 
 interface Shop {
   id: string;
@@ -166,7 +167,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [estimatedPrice, setEstimatedPrice] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [previewTarget, setPreviewTarget] = useState<{ name: string; url: string; isPdf: boolean } | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ name: string; url: string; isPdf: boolean; file?: File } | null>(null);
 
   // Print settings
   const [colorMode, setColorMode] = useState<ColorMode>("bw");
@@ -496,7 +497,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                         type="button"
                         onClick={() => {
                           const url = URL.createObjectURL(f.file);
-                          setPreviewTarget({ name: f.file.name, url, isPdf });
+                          setPreviewTarget({ name: f.file.name, url, isPdf, file: f.file });
                         }}
                         className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                         title="Preview your uploaded file"
@@ -575,19 +576,22 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+              <div className="flex-1 overflow-hidden flex flex-col bg-gray-950 min-h-[320px] h-[72vh]">
                 {previewTarget.isPdf ? (
-                  <iframe
-                    src={previewTarget.url}
-                    className="w-full h-[70vh] rounded-lg border-0 bg-white"
-                    title={previewTarget.name}
+                  <PdfViewer
+                    file={previewTarget.file}
+                    url={previewTarget.url}
+                    fileName={previewTarget.name}
+                    className="w-full h-full"
                   />
                 ) : (
-                  <img
-                    src={previewTarget.url}
-                    alt={previewTarget.name}
-                    className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
-                  />
+                  <div className="w-full h-full flex items-center justify-center p-4">
+                    <img
+                      src={previewTarget.url}
+                      alt={previewTarget.name}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -682,7 +686,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                     <div
                       onClick={() => {
                         const url = URL.createObjectURL(f.file);
-                        setPreviewTarget({ name: f.file.name, url, isPdf });
+                        setPreviewTarget({ name: f.file.name, url, isPdf, file: f.file });
                       }}
                       className="cursor-pointer"
                       title="Tap to preview full size"
@@ -716,7 +720,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                         type="button"
                         onClick={() => {
                           const url = URL.createObjectURL(f.file);
-                          setPreviewTarget({ name: f.file.name, url, isPdf });
+                          setPreviewTarget({ name: f.file.name, url, isPdf, file: f.file });
                         }}
                         className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                       >
@@ -977,19 +981,22 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+            <div className="flex-1 overflow-hidden flex flex-col bg-gray-950 min-h-[320px] h-[72vh]">
               {previewTarget.isPdf ? (
-                <iframe
-                  src={previewTarget.url}
-                  className="w-full h-[70vh] rounded-lg border-0 bg-white"
-                  title={previewTarget.name}
+                <PdfViewer
+                  file={previewTarget.file}
+                  url={previewTarget.url}
+                  fileName={previewTarget.name}
+                  className="w-full h-full"
                 />
               ) : (
-                <img
-                  src={previewTarget.url}
-                  alt={previewTarget.name}
-                  className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
-                />
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img
+                    src={previewTarget.url}
+                    alt={previewTarget.name}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                  />
+                </div>
               )}
             </div>
           </div>

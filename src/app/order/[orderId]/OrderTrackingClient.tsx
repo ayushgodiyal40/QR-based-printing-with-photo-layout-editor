@@ -16,6 +16,7 @@ import {
   Eye,
   X,
 } from "lucide-react";
+import PdfViewer from "@/components/PdfViewer";
 
 type OrderStatus =
   | "uploading"
@@ -488,19 +489,21 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950/90 min-h-[300px]">
+              <div className="flex-1 overflow-hidden flex flex-col bg-gray-950 min-h-[320px] h-[72vh]">
                 {previewTarget.isPdf ? (
-                  <iframe
-                    src={previewTarget.url}
-                    className="w-full h-[70vh] rounded-lg border-0 bg-white"
-                    title={previewTarget.name}
+                  <PdfViewer
+                    url={previewTarget.url}
+                    fileName={previewTarget.name}
+                    className="w-full h-full"
                   />
                 ) : (
-                  <img
-                    src={previewTarget.url}
-                    alt={previewTarget.name}
-                    className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
-                  />
+                  <div className="w-full h-full flex items-center justify-center p-4">
+                    <img
+                      src={previewTarget.url}
+                      alt={previewTarget.name}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                    />
+                  </div>
                 )}
               </div>
             </div>

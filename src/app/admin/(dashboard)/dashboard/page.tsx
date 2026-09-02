@@ -12,7 +12,6 @@ import {
   Bell,
   BellOff,
   RefreshCw,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -234,27 +233,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Launch Photo Studio Banner */}
-      <div className="mb-6 p-4 lg:p-5 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-indigo-700/50">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-6 h-6 text-amber-300" />
-          </div>
-          <div>
-            <h2 className="font-bold text-base text-white">Photo & Passport Print Studio</h2>
-            <p className="text-xs text-indigo-200 mt-0.5">
-              Create passport photo sheets (35×45mm, 2×2&quot;), multi-photo A4 sheets &amp; ID card layouts instantly.
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/admin/studio"
-          className="px-4 py-2.5 rounded-xl bg-white text-indigo-900 font-bold text-xs hover:bg-indigo-50 shadow-md transition-all flex items-center gap-2 flex-shrink-0 cursor-pointer"
-        >
-          <Sparkles className="w-4 h-4 text-indigo-600" />
-          Open Photo Studio
-        </Link>
-      </div>
 
       {/* Live Order Queue */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
