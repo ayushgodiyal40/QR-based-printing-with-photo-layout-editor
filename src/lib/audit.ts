@@ -20,6 +20,10 @@ export type AuditAction =
   | "user.created"
   | "shop.created"
   | "payment.reported_by_customer"
+  | "payment.verification_requested"
+  | "payment.confirm"
+  | "payment.reject"
+  | "payment.reset"
   | "payment.status_changed";
 
 export async function audit(params: {

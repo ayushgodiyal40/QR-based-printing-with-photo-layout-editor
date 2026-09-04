@@ -43,6 +43,9 @@ export async function GET(req: NextRequest) {
       paymentStatus: orders.paymentStatus,
       paymentMethod: orders.paymentMethod,
       paymentReference: orders.paymentReference,
+      utr: orders.utr,
+      paymentConfirmationMethod: orders.paymentConfirmationMethod,
+      paymentConfirmedTime: orders.paymentConfirmedTime,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
     })

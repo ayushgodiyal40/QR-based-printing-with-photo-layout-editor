@@ -55,9 +55,21 @@ const UpdateOrderSchema = z.object({
   sides: z.enum(["single", "double"]).optional(),
   orientation: z.enum(["auto", "portrait", "landscape"]).optional(),
   pageRange: z.string().max(100).optional(),
-  paymentStatus: z.enum(["unpaid", "paid", "refunded", "not_required"]).optional(),
+  paymentStatus: z.enum([
+    "PENDING",
+    "VERIFICATION_REQUIRED",
+    "PAID",
+    "FAILED",
+    "CANCELLED",
+    "unpaid",
+    "paid",
+    "refunded",
+    "not_required",
+  ]).optional(),
   paymentMethod: z.string().max(20).optional(),
   paymentReference: z.string().max(100).optional(),
+  utr: z.string().max(50).optional(),
+  paymentConfirmationMethod: z.string().max(30).optional(),
   note: z.string().max(500).optional(),
 }).strict();
 
@@ -97,9 +109,20 @@ export async function PATCH(
   if (data.copies) updates.copies = data.copies;
   if (data.orientation) updates.orientation = data.orientation;
   if (data.pageRange !== undefined) updates.pageRange = data.pageRange;
-  if (data.paymentStatus) updates.paymentStatus = data.paymentStatus;
+  if (data.paymentStatus) {
+    updates.paymentStatus = data.paymentStatus;
+    if (data.paymentStatus === "PAID" || data.paymentStatus === "paid") {
+      updates.paymentConfirmedTime = new Date();
+      updates.paymentConfirmationMethod = data.paymentConfirmationMethod || "SHOP_OWNER";
+    }
+  }
   if (data.paymentMethod) updates.paymentMethod = data.paymentMethod;
   if (data.paymentReference !== undefined) updates.paymentReference = data.paymentReference;
+  if (data.utr !== undefined) {
+    updates.utr = data.utr;
+    updates.paymentReference = data.utr;
+  }
+  if (data.paymentConfirmationMethod) updates.paymentConfirmationMethod = data.paymentConfirmationMethod;
 
   // Recalculate price if print settings changed
   if (data.colorMode || data.paperSize || data.copies || data.sides) {

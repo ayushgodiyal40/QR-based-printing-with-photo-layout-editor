@@ -128,9 +128,16 @@ export const orders = pgTable(
     totalPages: integer("total_pages").notNull().default(0),
     // Pricing & Payment
     estimatedPrice: decimal("estimated_price", { precision: 10, scale: 2 }),
-    paymentStatus: paymentStatusEnum("payment_status").notNull().default("unpaid"),
+    currency: varchar("currency", { length: 10 }).notNull().default("INR"),
+    paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("PENDING"),
     paymentMethod: varchar("payment_method", { length: 20 }).default("cash"),
     paymentReference: text("payment_reference"),
+    utr: varchar("utr", { length: 50 }),
+    upiTransactionId: text("upi_transaction_id"),
+    upiReferenceNumber: text("upi_reference_number"),
+    paymentAttemptTime: timestamp("payment_attempt_time"),
+    paymentConfirmedTime: timestamp("payment_confirmed_time"),
+    paymentConfirmationMethod: varchar("payment_confirmation_method", { length: 30 }),
     // Idempotency
     idempotencyKey: text("idempotency_key").unique(),
     // Lifecycle

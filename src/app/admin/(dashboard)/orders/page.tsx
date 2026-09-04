@@ -10,6 +10,9 @@ import {
   ArrowUp,
   Trash2,
   Loader2,
+  Volume2,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 
 const STATUSES = ["all", "received", "waiting", "processing", "printing", "completed", "cancelled"];
@@ -32,6 +35,32 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const confirmPayment = async (e: React.MouseEvent, order: any) => {
+    e.stopPropagation();
+    setConfirmingId(order.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "confirm" }),
+      });
+      if (res.ok) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === order.id
+              ? { ...o, paymentStatus: "PAID", paymentConfirmationMethod: "SHOP_OWNER" }
+              : o
+          )
+        );
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const fetchOrders = async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -201,21 +230,43 @@ export default function OrdersPage() {
                         <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
                           {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
                         </p>
-                        <span
-                          className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            order.paymentStatus === "paid"
+                        {order.paymentStatus === "VERIFICATION_REQUIRED" ? (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 animate-pulse">
+                              <Volume2 className="w-3 h-3 text-purple-600" />
+                              Awaiting Soundbox
+                            </span>
+                            <button
+                              onClick={(e) => confirmPayment(e, order)}
+                              disabled={confirmingId === order.id}
+                              className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-sm transition-colors cursor-pointer"
+                              title="Confirm PhonePe Soundbox Announcement"
+                            >
+                              {confirmingId === order.id ? "..." : "✓ Confirm"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 ${
+                              order.paymentStatus === "PAID" || order.paymentStatus === "paid"
+                                ? order.paymentMethod === "upi"
+                                  ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
+                                  : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                                : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"
+                            }`}
+                          >
+                            {order.paymentStatus === "PAID" || order.paymentStatus === "paid"
                               ? order.paymentMethod === "upi"
-                                ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300"
-                                : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                              : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"
-                          }`}
-                        >
-                          {order.paymentStatus === "paid"
-                            ? order.paymentMethod === "upi"
-                              ? "Paid (UPI)"
-                              : "Paid (Cash)"
-                            : "Unpaid"}
-                        </span>
+                                ? "Paid (UPI)"
+                                : "Paid (Cash)"
+                              : "Unpaid"}
+                          </span>
+                        )}
+                        {order.utr && (
+                          <p className="text-[10px] font-mono text-gray-400 dark:text-slate-500 mt-0.5 truncate max-w-[140px]">
+                            UTR: {order.utr}
+                          </p>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -258,15 +309,40 @@ export default function OrdersPage() {
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                       {order.totalFiles} files · {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize} · {order.estimatedPrice ? `₹${order.estimatedPrice}` : ""}
                     </p>
-                    <span
-                      className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded mt-1 ${
-                        order.paymentStatus === "paid"
-                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                          : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
-                      }`}
-                    >
-                      {order.paymentStatus === "paid" ? `Paid (${order.paymentMethod === "upi" ? "UPI" : "Cash"})` : "Unpaid"}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {order.paymentStatus === "VERIFICATION_REQUIRED" ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 animate-pulse">
+                            <Volume2 className="w-3 h-3 text-purple-600" />
+                            Awaiting Soundbox
+                          </span>
+                          <button
+                            onClick={(e) => confirmPayment(e, order)}
+                            disabled={confirmingId === order.id}
+                            className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-sm cursor-pointer"
+                          >
+                            {confirmingId === order.id ? "..." : "✓ Confirm"}
+                          </button>
+                        </>
+                      ) : (
+                        <span
+                          className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            order.paymentStatus === "PAID" || order.paymentStatus === "paid"
+                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                              : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
+                          }`}
+                        >
+                          {order.paymentStatus === "PAID" || order.paymentStatus === "paid"
+                            ? `Paid (${order.paymentMethod === "upi" ? "UPI" : "Cash"})`
+                            : "Unpaid"}
+                        </span>
+                      )}
+                      {order.utr && (
+                        <span className="text-[10px] font-mono text-gray-400 dark:text-slate-500">
+                          UTR: {order.utr}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${STATUS_COLORS[order.status] || ""}`}>

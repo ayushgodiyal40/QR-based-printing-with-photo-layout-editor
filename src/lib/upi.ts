@@ -1,7 +1,8 @@
 /**
- * Helper to build strict, universally compatible NPCI UPI URI strings
- * and direct mobile app deep links for PhonePe, Google Pay, and Paytm.
- * Supports both standard VPAs and verified signed Merchant Standee QRs (Soundbox).
+ * Standard NPCI UPI URI Specification & Helpers
+ * Supports standard dynamic UPI payment intents (upi://pay),
+ * on-screen dynamic QR generation, and preserves signed physical
+ * PhonePe Soundbox standee QRs without modifying cryptographic signatures.
  */
 
 export interface UpiParams {
@@ -11,7 +12,22 @@ export interface UpiParams {
   orderToken?: string | null;
 }
 
-/** Extract clean VPA handle (e.g., Q865308672@ybl or shop@okaxis) from raw string or full UPI URI */
+export const DEFAULT_PAYEE_NAME = "Godiyal General Store";
+
+/**
+ * Format and validate the exact transaction amount strictly to 2 decimal places (e.g. 1.00, 37.00).
+ * Prevents invalid numbers, zero, NaN, or floating point overflows.
+ */
+export function formatUpiAmount(amount?: string | number | null): string | null {
+  if (amount === null || amount === undefined || amount === "") return null;
+  const num = typeof amount === "number" ? amount : parseFloat(String(amount).trim());
+  if (isNaN(num) || !isFinite(num) || num <= 0) return null;
+  return num.toFixed(2);
+}
+
+/**
+ * Extract clean VPA handle (e.g. Q865308672@ybl) from raw string or full standee URI.
+ */
 export function extractUpiVpa(raw?: string | null): string {
   if (!raw) return "";
   const trimmed = raw.trim();
@@ -29,54 +45,102 @@ export function extractUpiVpa(raw?: string | null): string {
   return trimmed;
 }
 
-/** Build camera-scannable QR URI (preserves authentic counter standee signature if present) */
-export function buildQrUri(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (raw.startsWith("upi://pay?")) {
-    return raw;
-  }
-  return buildUpiUri(params);
+/**
+ * Sanitize payee name: letters, numbers and spaces only, max 30 chars.
+ * Defaults to "Godiyal General Store".
+ */
+export function sanitizePayeeName(name?: string | null): string {
+  const candidate = (name || "").trim() || DEFAULT_PAYEE_NAME;
+  const cleaned = candidate.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30).trim();
+  return cleaned || DEFAULT_PAYEE_NAME;
 }
 
-function getQueryString(params: UpiParams): string {
-  const raw = (params.upiId || "").trim();
-  if (!raw) return "";
+/**
+ * Sanitize transaction note / order reference (alphanumeric only to avoid bank risk filters).
+ */
+export function sanitizeOrderNote(token?: string | null): string {
+  if (!token) return "Order";
+  const cleaned = token.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20);
+  return cleaned ? `Order${cleaned}` : "Order";
+}
 
-  // Always use clean VPA for web browser intents to avoid mode=02 offline standee intent conflicts
-  const pa = extractUpiVpa(raw);
-  const rawName = (params.payeeName || "PhonePeMerchant").trim();
-  // Safe payee name: alphanumeric and spaces only, max 30 chars
-  const pn = rawName.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 30) || "PhonePeMerchant";
+/**
+ * Build Standard NPCI UPI URI for dynamic order payments.
+ * Format: upi://pay?pa=VPA&pn=NAME&am=AMOUNT&cu=INR&tn=NOTE
+ * Strictly uses safe URL encoding via URLSearchParams.
+ */
+export function buildStandardUpiUri(params: UpiParams): string {
+  const pa = extractUpiVpa(params.upiId);
+  if (!pa) return "";
+
+  const pn = sanitizePayeeName(params.payeeName);
+  const am = formatUpiAmount(params.amount);
+  const tn = sanitizeOrderNote(params.orderToken);
 
   const searchParams = new URLSearchParams();
   searchParams.set("pa", pa);
   searchParams.set("pn", pn);
+  if (am) {
+    searchParams.set("am", am);
+  }
   searchParams.set("cu", "INR");
+  if (tn) {
+    searchParams.set("tn", tn);
+  }
 
-  return searchParams.toString();
+  return `upi://pay?${searchParams.toString()}`;
 }
 
-/** Standard NPCI UPI URI for mobile browser intent */
-export function buildUpiUri(params: UpiParams): string {
-  const qs = getQueryString(params);
-  return qs ? `upi://pay?${qs}` : "";
+/**
+ * Alias for backward compatibility
+ */
+export const buildUpiUri = buildStandardUpiUri;
+
+/**
+ * Build dynamic on-screen QR URI.
+ * Uses the exact standard dynamic URI with amount and order token.
+ */
+export function buildQrUri(params: UpiParams): string {
+  return buildStandardUpiUri(params);
 }
 
-/** Direct PhonePe app deep link (opens PhonePe directly) */
-export function buildPhonePeUri(params: UpiParams): string {
-  const qs = getQueryString(params);
-  return qs ? `phonepe://pay?${qs}` : "";
+/**
+ * Check if the shop's configured upiId is an authentic signed standee QR.
+ * Returns the exact unchanged standee URI if present, or null.
+ * CRITICAL: Never appends am, tn, or modifies mode=02 / sign=... on this URI.
+ */
+export function getStaticStandeeUri(rawUpiId?: string | null): string | null {
+  if (!rawUpiId) return null;
+  const trimmed = rawUpiId.trim();
+  if (trimmed.startsWith("upi://pay?") && (trimmed.includes("sign=") || trimmed.includes("mode=02"))) {
+    return trimmed;
+  }
+  return null;
 }
 
-/** Direct Google Pay (Tez) app deep link (opens GPay directly) */
-export function buildGPayUri(params: UpiParams): string {
-  const qs = getQueryString(params);
-  return qs ? `tez://upi/pay?${qs}` : "";
-}
+/**
+ * Diagnostics and testing helper for the safe ₹1 test / debug mode.
+ * Returns complete encoded and decoded URI breakdown without exposing sensitive data.
+ */
+export function getUpiDiagnostics(params: UpiParams) {
+  const pa = extractUpiVpa(params.upiId);
+  const pn = sanitizePayeeName(params.payeeName);
+  const am = formatUpiAmount(params.amount);
+  const tn = sanitizeOrderNote(params.orderToken);
+  const encodedUri = buildStandardUpiUri(params);
+  const staticStandeeUri = getStaticStandeeUri(params.upiId);
 
-/** Direct Paytm app deep link (opens Paytm directly) */
-export function buildPaytmUri(params: UpiParams): string {
-  const qs = getQueryString(params);
-  return qs ? `paytmmp://pay?${qs}` : "";
+  return {
+    orderToken: params.orderToken || "—",
+    amount: am || "0.00",
+    merchantVpa: pa,
+    payeeName: pn,
+    currency: "INR",
+    transactionNote: tn,
+    encodedUri,
+    decodedUri: decodeURIComponent(encodedUri),
+    launchScheme: "upi://pay",
+    hasStaticStandee: !!staticStandeeUri,
+    staticStandeeUri,
+  };
 }
-

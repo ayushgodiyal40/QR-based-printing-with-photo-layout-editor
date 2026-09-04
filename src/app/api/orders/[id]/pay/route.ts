@@ -6,9 +6,12 @@ import { notifyShop } from "@/lib/sse";
 import { audit } from "@/lib/audit";
 import { z } from "zod";
 
-const PaySchema = z.object({
+const CustomerPaySchema = z.object({
   paymentMethod: z.enum(["cash", "upi"]).default("upi"),
-  paymentReference: z.string().max(100).optional(),
+  utr: z.string().trim().max(50).optional(),
+  paymentReference: z.string().trim().max(100).optional(),
+  upiTransactionId: z.string().trim().max(100).optional(),
+  upiReferenceNumber: z.string().trim().max(100).optional(),
 });
 
 export async function POST(
@@ -22,7 +25,7 @@ export async function POST(
     body = await req.json();
   } catch {}
 
-  const parsed = PaySchema.safeParse(body);
+  const parsed = CustomerPaySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payment data." }, { status: 400 });
   }
@@ -34,6 +37,7 @@ export async function POST(
       token: orders.token,
       orderNumber: orders.orderNumber,
       paymentStatus: orders.paymentStatus,
+      estimatedPrice: orders.estimatedPrice,
     })
     .from(orders)
     .where(eq(orders.id, id))
@@ -44,19 +48,34 @@ export async function POST(
   }
 
   const order = orderRows[0];
+  const now = new Date();
+  const utrValue = parsed.data.utr || parsed.data.paymentReference || undefined;
+
   const updates: Record<string, any> = {
     paymentMethod: parsed.data.paymentMethod,
-    updatedAt: new Date(),
+    updatedAt: now,
   };
 
-  if (parsed.data.paymentReference) {
-    updates.paymentReference = parsed.data.paymentReference;
+  if (utrValue) {
+    updates.utr = utrValue;
+    updates.paymentReference = utrValue;
+  }
+  if (parsed.data.upiTransactionId) {
+    updates.upiTransactionId = parsed.data.upiTransactionId;
+  }
+  if (parsed.data.upiReferenceNumber) {
+    updates.upiReferenceNumber = parsed.data.upiReferenceNumber;
   }
 
-  // If customer confirmed paying online via UPI, we mark it as paid or keep reference
-  // so operator and soundbox can verify
-  if (parsed.data.paymentMethod === "upi") {
-    updates.paymentStatus = "paid";
+  // SECURITY RULE: Never mark order as PAID from customer submission alone.
+  // Move to VERIFICATION_REQUIRED so shop owner verifies with PhonePe Soundbox.
+  if (order.paymentStatus !== "PAID" && order.paymentStatus !== "paid") {
+    if (parsed.data.paymentMethod === "upi") {
+      updates.paymentStatus = "VERIFICATION_REQUIRED";
+      updates.paymentAttemptTime = now;
+    } else {
+      updates.paymentStatus = "PENDING";
+    }
   }
 
   const [updated] = await db
@@ -68,21 +87,33 @@ export async function POST(
   await audit({
     shopId: order.shopId,
     orderId: id,
-    action: "payment.reported_by_customer",
-    details: parsed.data,
+    action: "payment.verification_requested",
+    details: {
+      paymentMethod: parsed.data.paymentMethod,
+      utr: utrValue,
+      status: updated.paymentStatus,
+    },
   });
 
-  // Notify admin dashboard via SSE
+  // Notify shop dashboard in real-time
   notifyShop(order.shopId, {
-    event: "order_payment_updated",
+    event: "order_payment_verifying",
     data: {
       orderId: id,
       token: order.token,
+      orderNumber: order.orderNumber,
+      amount: updated.estimatedPrice,
       paymentStatus: updated.paymentStatus,
       paymentMethod: updated.paymentMethod,
+      utr: updated.utr,
       paymentReference: updated.paymentReference,
     },
   });
 
-  return NextResponse.json({ success: true, order: updated });
+  return NextResponse.json({
+    success: true,
+    paymentStatus: updated.paymentStatus,
+    message: "Payment submitted. Verification required by shop owner via Soundbox.",
+    order: updated,
+  });
 }
