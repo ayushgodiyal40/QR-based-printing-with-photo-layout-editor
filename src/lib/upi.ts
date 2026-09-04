@@ -56,13 +56,26 @@ export function sanitizePayeeName(name?: string | null): string {
 }
 
 /**
- * Sanitize transaction note / order reference (alphanumeric only to avoid bank risk filters).
+ * Sanitize transaction note / order reference (alphanumeric with single space).
+ * Produces "Order TEST01" which URL-encodes to "Order+TEST01".
  */
 export function sanitizeOrderNote(token?: string | null): string {
   if (!token) return "Order";
-  const cleaned = token.replace(/[^a-zA-Z0-9]/g, "").slice(0, 20);
-  return cleaned ? `Order${cleaned}` : "Order";
+  const cleaned = token.replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 20).trim();
+  if (!cleaned) return "Order";
+  if (cleaned.toLowerCase().startsWith("order")) return cleaned;
+  return `Order ${cleaned}`;
 }
+
+export const UPI_TEST_VARIANTS = {
+  vpa: "Q865308672@ybl",
+  name: "Godiyal General Store",
+  amount: "1.00",
+  token: "TEST01",
+  minimal: "upi://pay?pa=Q865308672%40ybl&am=1.00&cu=INR",
+  withName: "upi://pay?pa=Q865308672%40ybl&pn=Godiyal+General+Store&am=1.00&cu=INR",
+  full: "upi://pay?pa=Q865308672%40ybl&pn=Godiyal+General+Store&am=1.00&cu=INR&tn=Order+TEST01",
+};
 
 /**
  * Build Standard NPCI UPI URI for dynamic order payments.

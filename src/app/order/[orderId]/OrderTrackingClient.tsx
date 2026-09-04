@@ -23,7 +23,9 @@ import {
   Check,
   Info,
   Copy,
+  ExternalLink,
 } from "lucide-react";
+import Link from "next/link";
 import PdfViewer from "@/components/PdfViewer";
 import {
   buildStandardUpiUri,
@@ -450,6 +452,37 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
                   <Smartphone className="w-4 h-4 text-white" />
                   Pay ₹{order.estimatedPrice} via UPI App
                 </button>
+
+                {/* Temporary Copy UPI URI Button (TEST B) + A/B Diagnostic Link */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const uri = buildStandardUpiUri({
+                        upiId: order.upiId || "",
+                        payeeName: order.upiName || order.shopName,
+                        amount: order.estimatedPrice,
+                        orderToken: order.token,
+                      });
+                      navigator.clipboard.writeText(uri);
+                      setCopiedDebug(true);
+                      setTimeout(() => setCopiedDebug(false), 2500);
+                    }}
+                    className="py-2.5 px-3 rounded-xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {copiedDebug ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedDebug ? "URI Copied!" : "Copy UPI URI"}
+                  </button>
+
+                  <Link
+                    href="/test-upi"
+                    target="_blank"
+                    className="py-2.5 px-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors text-center"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-purple-600" />
+                    A/B Test Bench
+                  </Link>
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   {/* Fallback 1: Scan Dynamic QR */}
