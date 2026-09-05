@@ -114,6 +114,9 @@ export default function OrderDetailPage() {
   };
 
   useEffect(() => {
+    try {
+      router.prefetch("/admin/orders");
+    } catch {}
     fetchOrder();
 
     // Fast polling while files are uploading from the client's phone
@@ -247,24 +250,40 @@ export default function OrderDetailPage() {
   const deleteSingleFile = async (file: any) => {
     if (!confirm(`Delete unwanted file "${file.originalName}" from this order?`)) return;
     setDeletingFileId(file.id);
-    const res = await fetch(`/api/admin/orders/${id}/files/${file.id}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      fetchOrder();
+    const prevFiles = [...files];
+    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/files/${file.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        setFiles(prevFiles);
+        alert("Failed to delete file from server.");
+      }
+    } catch {
+      setFiles(prevFiles);
+      alert("Network error while deleting file.");
+    } finally {
+      setDeletingFileId(null);
     }
-    setDeletingFileId(null);
   };
 
   const deleteEntireOrder = async () => {
     if (!confirm(`Are you sure you want to delete this client order (#${order.token}) permanently?`)) return;
     setDeletingOrder(true);
-    const res = await fetch(`/api/admin/orders/${id}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      router.push("/admin/orders");
-    } else {
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        router.replace("/admin/orders");
+      } else {
+        alert("Failed to delete order. Please try again.");
+        setDeletingOrder(false);
+      }
+    } catch (err) {
+      console.error("Failed to delete order:", err);
+      alert("Network error while deleting order.");
       setDeletingOrder(false);
     }
   };

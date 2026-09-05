@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -33,16 +33,28 @@ export default function OrdersPage() {
   const [sort, setSort] = useState("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchOrders = async (isBackground = false) => {
+  // Set of order IDs currently being deleted to prevent background poll resurrection
+  const pendingDeletesRef = useRef<Set<string>>(new Set());
+
+  const fetchOrders = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
     const params = new URLSearchParams({ status, sort, limit: "100" });
-    const res = await fetch(`/api/admin/orders?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setOrders(data.orders);
+    try {
+      const res = await fetch(`/api/admin/orders?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Never restore orders that are pending deletion
+        const activeOrders = (data.orders || []).filter(
+          (o: any) => !pendingDeletesRef.current.has(o.id)
+        );
+        setOrders(activeOrders);
+      }
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+    } finally {
+      if (!isBackground) setLoading(false);
     }
-    if (!isBackground) setLoading(false);
-  };
+  }, [status, sort]);
 
   useEffect(() => {
     fetchOrders();
@@ -50,7 +62,31 @@ export default function OrdersPage() {
       fetchOrders(true);
     }, 4000);
     return () => clearInterval(interval);
-  }, [status, sort]);
+  }, [fetchOrders]);
+
+  // Real-time SSE synchronization for order events
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource("/api/sse/admin");
+      es.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === "order_deleted") {
+            const deletedId = payload.data?.orderId;
+            if (deletedId) {
+              setOrders((prev) => prev.filter((o) => o.id !== deletedId));
+            }
+          } else if (payload.event === "new_order" || payload.event === "order_updated") {
+            fetchOrders(true);
+          }
+        } catch {}
+      };
+    } catch {}
+    return () => {
+      es?.close();
+    };
+  }, [fetchOrders]);
 
   const deleteOrder = async (e: React.MouseEvent, order: any) => {
     e.stopPropagation(); // Prevents opening the order detail page
@@ -58,12 +94,29 @@ export default function OrdersPage() {
       return;
     }
 
-    setDeletingId(order.id);
-    const res = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
-    if (res.ok) {
-      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    const orderId = order.id;
+    setDeletingId(orderId);
+    pendingDeletesRef.current.add(orderId);
+
+    // OPTIMISTIC DELETION: Instantly remove from screen with 0ms delay!
+    const previousOrders = [...orders];
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error("Failed to delete order");
+      }
+      pendingDeletesRef.current.delete(orderId);
+      setDeletingId(null);
+    } catch (err) {
+      console.error("Delete order error:", err);
+      pendingDeletesRef.current.delete(orderId);
+      setDeletingId(null);
+      // Rollback on server failure
+      alert("Failed to delete order from server. Restoring list.");
+      setOrders(previousOrders);
     }
-    setDeletingId(null);
   };
 
   const filtered = orders.filter((o) => {

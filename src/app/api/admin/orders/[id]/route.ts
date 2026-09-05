@@ -164,16 +164,34 @@ export async function DELETE(
 
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
+  // Query file storage paths before deletion for background cleanup
+  const filesToDelete = await db
+    .select({ storagePath: orderFiles.storagePath })
+    .from(orderFiles)
+    .where(eq(orderFiles.orderId, id));
+
+  // Perform database deletion (DB cascades delete to order_files and order_notes)
   await db.delete(orders).where(eq(orders.id, id));
 
-  await audit({
+  // Audit without foreign key violation (avoid orderId column referencing deleted orders row)
+  audit({
     shopId,
-    orderId: id,
     userId,
     action: "order.deleted",
-  });
+    details: { deletedOrderId: id },
+  }).catch(() => {});
 
-  notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+  // Real-time broadcast to all connected admin tabs
+  try {
+    notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+  } catch {}
+
+  // Asynchronously clean up files from storage without delaying response
+  if (filesToDelete.length > 0) {
+    import("@/lib/storage").then(({ deleteFile }) => {
+      Promise.all(filesToDelete.map((f) => deleteFile(f.storagePath).catch(() => {}))).catch(() => {});
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }
