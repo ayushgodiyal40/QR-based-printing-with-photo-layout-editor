@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(orders.shopId, shopId)];
+  const conditions = [
+    eq(orders.shopId, shopId),
+    eq(orders.isDeleted, false),
+  ];
 
   if (status && status !== "all") {
     conditions.push(eq(orders.status, status as any));

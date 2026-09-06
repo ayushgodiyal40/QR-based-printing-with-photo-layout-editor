@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // Today's orders
+  // Today's orders (includes all orders placed today; metrics are retained even if order is removed from active queue)
   const todayOrders = await db
     .select({
       id: orders.id,
@@ -20,10 +20,12 @@ export async function GET(_req: NextRequest) {
       colorMode: orders.colorMode,
       totalPages: orders.totalPages,
       estimatedPrice: orders.estimatedPrice,
+      isDeleted: orders.isDeleted,
     })
     .from(orders)
     .where(and(eq(orders.shopId, shopId), gte(orders.createdAt, todayStart)));
 
+  // Retain all historical metrics for today
   const totalOrders = todayOrders.length;
   const totalPages = todayOrders.reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
   const totalRevenue = todayOrders.reduce(
@@ -36,8 +38,10 @@ export async function GET(_req: NextRequest) {
   const colorPages = todayOrders
     .filter((o: any) => o.colorMode === "color")
     .reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
-  const pendingOrders = todayOrders.filter((o: any) =>
-    ["received", "waiting", "processing", "printing"].includes(o.status)
+
+  // Pending queue count only includes active, non-deleted orders
+  const pendingOrders = todayOrders.filter(
+    (o: any) => !o.isDeleted && ["received", "waiting", "processing", "printing"].includes(o.status)
   ).length;
   const completedOrders = todayOrders.filter((o: any) => o.status === "completed").length;
 

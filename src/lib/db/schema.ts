@@ -133,6 +133,9 @@ export const orders = pgTable(
     paymentReference: text("payment_reference"),
     // Idempotency
     idempotencyKey: text("idempotency_key").unique(),
+    // Soft deletion (preserves metrics on Dashboard while removing from Orders menu)
+    isDeleted: boolean("is_deleted").notNull().default(false),
+    deletedAt: timestamp("deleted_at"),
     // Lifecycle
     expiresAt: timestamp("expires_at"),
     completedAt: timestamp("completed_at"),
@@ -144,6 +147,7 @@ export const orders = pgTable(
     tokenIdx: index("orders_token_idx").on(t.token),
     statusIdx: index("orders_status_idx").on(t.status),
     createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
+    isDeletedIdx: index("orders_is_deleted_idx").on(t.isDeleted),
   })
 );
 

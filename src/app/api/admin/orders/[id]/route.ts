@@ -21,7 +21,7 @@ export async function GET(
   const orderRows = await db
     .select()
     .from(orders)
-    .where(and(eq(orders.id, id), eq(orders.shopId, shopId)))
+    .where(and(eq(orders.id, id), eq(orders.shopId, shopId), eq(orders.isDeleted, false)))
     .limit(1);
 
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -159,21 +159,50 @@ export async function DELETE(
   const orderRows = await db
     .select({ id: orders.id })
     .from(orders)
-    .where(and(eq(orders.id, id), eq(orders.shopId, shopId)))
+    .where(and(eq(orders.id, id), eq(orders.shopId, shopId), eq(orders.isDeleted, false)))
     .limit(1);
 
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
-  await db.delete(orders).where(eq(orders.id, id));
+  // Query file storage paths before deletion to clean up physical storage asynchronously
+  const filesToDelete = await db
+    .select({ storagePath: orderFiles.storagePath })
+    .from(orderFiles)
+    .where(eq(orderFiles.orderId, id));
 
-  await audit({
+  // Soft delete order: marks isDeleted = true and records deletedAt.
+  // This removes the order from the Orders menu and Live Queue while preserving
+  // dashboard metrics (Orders Today, Pages Printed, Revenue).
+  await db
+    .update(orders)
+    .set({ isDeleted: true, deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(orders.id, id));
+
+  // Soft delete associated order files and clear blob data
+  await db
+    .update(orderFiles)
+    .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
+    .where(eq(orderFiles.orderId, id));
+
+  // Audit log non-blockingly
+  audit({
     shopId,
     orderId: id,
     userId,
     action: "order.deleted",
-  });
+  }).catch(() => {});
 
-  notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+  // Real-time broadcast to all admin listeners
+  try {
+    notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+  } catch {}
+
+  // Asynchronously clean up uploaded files from storage to save disk space
+  if (filesToDelete.length > 0) {
+    import("@/lib/storage").then(({ deleteFile }) => {
+      Promise.all(filesToDelete.map((f) => deleteFile(f.storagePath).catch(() => {}))).catch(() => {});
+    }).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }

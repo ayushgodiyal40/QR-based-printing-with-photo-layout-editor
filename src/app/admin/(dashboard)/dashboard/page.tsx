@@ -147,6 +147,15 @@ export default function DashboardPage() {
       );
     });
 
+    es.addEventListener("order_deleted", (e) => {
+      try {
+        const { orderId } = JSON.parse(e.data);
+        if (orderId) {
+          setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        }
+      } catch {}
+    });
+
     // Auto-refresh every 4 seconds for live syncing
     const interval = setInterval(fetchData, 4000);
 

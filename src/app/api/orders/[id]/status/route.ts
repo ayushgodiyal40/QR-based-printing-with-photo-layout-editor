@@ -36,7 +36,7 @@ export async function GET(
     })
     .from(orders)
     .leftJoin(shops, eq(orders.shopId, shops.id))
-    .where(eq(orders.id, id))
+    .where(and(eq(orders.id, id), eq(orders.isDeleted, false)))
     .limit(1);
 
   if (!orderRows.length) {
