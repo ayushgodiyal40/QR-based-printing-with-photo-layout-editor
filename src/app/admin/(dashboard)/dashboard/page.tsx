@@ -156,8 +156,11 @@ export default function DashboardPage() {
       } catch {}
     });
 
-    // Auto-refresh every 4 seconds for live syncing
-    const interval = setInterval(fetchData, 4000);
+    // Fallback refresh every 15 seconds (only when tab is active)
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchData();
+    }, 15000);
 
     return () => {
       es.close();

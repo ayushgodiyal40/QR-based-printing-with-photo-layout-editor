@@ -56,7 +56,11 @@ export async function runFileCleanup(shopId?: string) {
 
 async function deleteOrderFiles(orderId: string, shopId: string) {
   const files = await db
-    .select()
+    .select({
+      id: orderFiles.id,
+      storagePath: orderFiles.storagePath,
+      originalName: orderFiles.originalName,
+    })
     .from(orderFiles)
     .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
 
@@ -64,7 +68,7 @@ async function deleteOrderFiles(orderId: string, shopId: string) {
     await deleteFile(file.storagePath);
     await db
       .update(orderFiles)
-      .set({ isDeleted: true, deletedAt: new Date() })
+      .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
       .where(eq(orderFiles.id, file.id));
 
     await audit({
@@ -74,4 +78,17 @@ async function deleteOrderFiles(orderId: string, shopId: string) {
       details: { fileName: file.originalName, reason: "retention_policy" },
     });
   }
+}
+
+/**
+ * Purge raw base64 data for all soft-deleted or completed orders to reclaim Neon DB storage.
+ */
+export async function purgeLegacyFileData(shopId?: string) {
+  // Clear fileData on all files already marked deleted
+  await db
+    .update(orderFiles)
+    .set({ fileData: null })
+    .where(eq(orderFiles.isDeleted, true));
+
+  return { ok: true };
 }

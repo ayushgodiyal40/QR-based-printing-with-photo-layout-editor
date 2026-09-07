@@ -261,7 +261,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex items-center justify-between">
             <button
               onClick={save}
               disabled={saving}
@@ -271,6 +271,48 @@ export default function SettingsPage() {
               {success ? "Saved! ✓" : "Save Settings"}
             </button>
           </div>
+        </div>
+
+        {/* Database & Storage Optimization Section */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <span>🧹</span> Database & Network Bandwidth Optimization
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+              Purge heavy raw base64 file payloads from completed and deleted orders to reclaim Neon database storage and prevent transfer quota alerts.
+            </p>
+          </div>
+
+          <div className="p-4 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-900/40 flex items-start gap-3">
+            <span className="text-amber-600 text-base mt-0.5">⚡</span>
+            <div className="text-xs text-amber-900 dark:text-amber-200">
+              <p className="font-semibold mb-0.5">Zero Data Loss for Reporting:</p>
+              <p className="text-amber-800 dark:text-amber-300">
+                All order statistics, tokens, customer names, page counts, prices, and revenue figures are 100% preserved forever. Only the heavy underlying document binaries of completed orders are cleared.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (!confirm("This will purge stored document payloads for completed and deleted orders to free database capacity. Continue?")) return;
+              try {
+                const res = await fetch("/api/admin/maintenance/cleanup", { method: "POST" });
+                const d = await res.json();
+                if (res.ok) {
+                  alert(d.message || "Database storage cleaned successfully!");
+                } else {
+                  alert(d.error || "Failed to clean storage.");
+                }
+              } catch {
+                alert("Request failed. Please check network connection.");
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs font-semibold cursor-pointer transition-all shadow-sm"
+          >
+            <span>🗑️</span> Clean Database & Free Up Quota
+          </button>
         </div>
       </div>
     </div>

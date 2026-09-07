@@ -118,7 +118,15 @@ export async function POST(
       fileData: base64Data,
       uploadStatus: "complete",
     })
-    .returning();
+    .returning({
+      id: orderFiles.id,
+      originalName: orderFiles.originalName,
+      sizeBytes: orderFiles.sizeBytes,
+      pageCount: orderFiles.pageCount,
+      mimeType: orderFiles.mimeType,
+      imageWidth: orderFiles.imageWidth,
+      imageHeight: orderFiles.imageHeight,
+    });
 
   // Update order totals and recalculate price
   const allFiles = await db

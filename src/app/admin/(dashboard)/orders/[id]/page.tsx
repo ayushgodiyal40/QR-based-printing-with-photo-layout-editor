@@ -116,12 +116,13 @@ export default function OrderDetailPage() {
   useEffect(() => {
     fetchOrder();
 
-    // Fast polling while files are uploading from the client's phone
+    // Low-frequency fallback poll (only when tab is active)
     const pollInterval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       fetchOrder(true);
-    }, 1500);
+    }, 20000);
 
-    // Live SSE listener
+    // Real-time live SSE listener
     let es: EventSource | null = null;
     try {
       es = new EventSource("/api/sse/admin");

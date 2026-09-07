@@ -27,7 +27,22 @@ export async function GET(
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
   const files = await db
-    .select()
+    .select({
+      id: orderFiles.id,
+      orderId: orderFiles.orderId,
+      originalName: orderFiles.originalName,
+      storedName: orderFiles.storedName,
+      mimeType: orderFiles.mimeType,
+      sizeBytes: orderFiles.sizeBytes,
+      pageCount: orderFiles.pageCount,
+      imageWidth: orderFiles.imageWidth,
+      imageHeight: orderFiles.imageHeight,
+      storagePath: orderFiles.storagePath,
+      uploadStatus: orderFiles.uploadStatus,
+      isDeleted: orderFiles.isDeleted,
+      deletedAt: orderFiles.deletedAt,
+      createdAt: orderFiles.createdAt,
+    })
     .from(orderFiles)
     .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)));
 
