@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const status = searchParams.get("status");
   const search = searchParams.get("search");
-  const sort = searchParams.get("sort") || "newest";
+  const sort = searchParams.get("sort") || "oldest";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
   const offset = (page - 1) * limit;

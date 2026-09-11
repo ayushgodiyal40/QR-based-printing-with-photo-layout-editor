@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const fetchData = async () => {
     const [statsRes, ordersRes] = await Promise.all([
       fetch("/api/admin/dashboard"),
-      fetch("/api/admin/orders?status=received&limit=20"),
+      fetch("/api/admin/orders?status=received&limit=20&sort=newest"),
     ]);
     if (statsRes.ok) setStats(await statsRes.json());
     if (ordersRes.ok) {

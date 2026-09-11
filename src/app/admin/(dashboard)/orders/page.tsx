@@ -30,7 +30,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState("oldest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchOrders = async (isBackground = false) => {
@@ -106,8 +106,8 @@ export default function OrdersPage() {
           onChange={(e) => setSort(e.target.value)}
           className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-sm focus:outline-none shadow-sm cursor-pointer"
         >
-          <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
+          <option value="newest">Newest first</option>
         </select>
       </div>
 
