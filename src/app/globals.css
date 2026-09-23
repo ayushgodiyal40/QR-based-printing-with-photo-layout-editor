@@ -9,11 +9,11 @@
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --bg-dark: #0f172a;
-  --bg-dark-2: #1e293b;
-  --bg-dark-3: #334155;
-  --text-light: #f8fafc;
-  --text-muted: #94a3b8;
+  --bg-dark: #000000;
+  --bg-dark-2: #09090b;
+  --bg-dark-3: #18181b;
+  --text-light: #ffffff;
+  --text-muted: #a1a1aa;
 }
 
 * {
@@ -32,10 +32,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Dark mode */
+/* Dark mode - Pure Pitch Black */
 .dark body {
-  background: var(--bg-dark);
-  color: var(--text-light);
+  background: #000000;
+  color: #ffffff;
 }
 
 /* Scrollbar */
@@ -51,7 +51,7 @@ body {
   border-radius: 3px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #27272a;
 }
 
 /* Animations */
@@ -161,6 +161,10 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg, #121212 25%, #222222 50%, #121212 75%);
+  background-size: 200% 100%;
 }
 
 /* Print optimizations - removes browser default header (time/title) and footer (URL) */

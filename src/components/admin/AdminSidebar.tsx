@@ -39,11 +39,17 @@ export default function AdminSidebar({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+
+  // Sync optimistic href back when navigation completes
+  if (optimisticHref && pathname.startsWith(optimisticHref)) {
+    setOptimisticHref(null);
+  }
 
   return (
     <>
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-slate-900 flex items-center justify-between px-4 z-40 border-b border-slate-800">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-black flex items-center justify-between px-4 z-40 border-b border-neutral-900">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center">
             <Printer className="w-4 h-4 text-white" />
@@ -69,26 +75,26 @@ export default function AdminSidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30 mt-14"
+          className="lg:hidden fixed inset-0 bg-black/70 z-30 mt-14"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Pure Pitch Black */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-800 z-40 flex flex-col transition-transform lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-full w-64 bg-black border-r border-neutral-900 z-40 flex flex-col transition-transform lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:static lg:flex`}
       >
         {/* Logo & Theme Toggle */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-800 flex-shrink-0">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-neutral-900 flex-shrink-0">
           <div className="flex items-center">
             <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
               <Printer className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="font-bold text-white text-sm leading-none">{shopName}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Admin Panel</p>
+              <p className="text-[11px] text-neutral-400 mt-0.5">Admin Panel</p>
             </div>
           </div>
           <ThemeToggle />
@@ -97,16 +103,21 @@ export default function AdminSidebar({
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname.startsWith(href);
+            const currentPath = optimisticHref || pathname;
+            const active = currentPath.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setMobileOpen(false)}
+                prefetch={true}
+                onClick={() => {
+                  setOptimisticHref(href);
+                  setMobileOpen(false);
+                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all group ${
                   active
                     ? "bg-indigo-600 text-white shadow-md"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    : "text-neutral-400 hover:text-white hover:bg-neutral-900"
                 }`}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -123,11 +134,11 @@ export default function AdminSidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-neutral-900">
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all text-sm font-medium"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-sm font-medium cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
               Sign out

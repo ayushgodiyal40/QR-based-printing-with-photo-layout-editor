@@ -2,16 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { BarChart2, Download, Loader2 } from "lucide-react";
+import { getCachedData, setCachedData } from "@/lib/client-cache";
+
+const CACHE_KEY_REPORTS = "admin_reports_orders";
 
 export default function ReportsPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedData<any[]>(CACHE_KEY_REPORTS);
+  const [orders, setOrders] = useState<any[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [period, setPeriod] = useState("today");
 
   useEffect(() => {
     fetch("/api/admin/orders?limit=500&status=all")
-      .then((r) => r.json())
-      .then((d) => { setOrders(d.orders || []); setLoading(false); });
+      .then((r) => (r.ok ? r.json() : { orders: [] }))
+      .then((d) => {
+        const list = d.orders || [];
+        setOrders(list);
+        setCachedData(CACHE_KEY_REPORTS, list);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const filterByPeriod = (orders: any[]) => {
@@ -53,7 +63,7 @@ export default function ReportsPage() {
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Reports</h1>
         <div className="flex items-center gap-3">
           <select value={period} onChange={(e) => setPeriod(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none shadow-sm cursor-pointer">
+            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none shadow-sm cursor-pointer">
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
@@ -75,15 +85,15 @@ export default function ReportsPage() {
           { label: "Revenue", value: `₹${totalRevenue.toFixed(0)}` },
           { label: "B&W / Color", value: `${bwOrders} / ${colorOrders}` },
         ].map((s) => (
-          <div key={s.label} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-4">
+          <div key={s.label} className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-4">
             <p className="text-2xl font-black text-gray-900 dark:text-white">{s.value}</p>
-            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">{s.label}</p>
+            <p className="text-xs text-gray-400 dark:text-neutral-400 mt-1">{s.label}</p>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -92,7 +102,7 @@ export default function ReportsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-400 dark:text-slate-500 uppercase border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40">
+                <tr className="text-left text-xs text-gray-400 dark:text-neutral-500 uppercase border-b border-gray-100 dark:border-neutral-900 bg-gray-50/50 dark:bg-neutral-900/40">
                   <th className="px-4 py-3">Order</th>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Pages</th>
@@ -102,22 +112,22 @@ export default function ReportsPage() {
                   <th className="px-4 py-3">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-neutral-900">
                 {filtered.slice(0, 100).map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                  <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-neutral-900/50">
                     <td className="px-4 py-3 font-bold text-indigo-700 dark:text-indigo-400">{o.orderNumber}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-slate-300">{o.customerName || "Walk-in"}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{o.totalPages}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{o.colorMode === "bw" ? "B&W" : "Color"} · {o.paperSize}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{o.customerName || "Walk-in"}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">{o.totalPages}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">{o.colorMode === "bw" ? "B&W" : "Color"} · {o.paperSize}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{o.estimatedPrice ? `₹${o.estimatedPrice}` : "—"}</td>
-                    <td className="px-4 py-3 capitalize text-xs text-gray-700 dark:text-slate-300">{o.status}</td>
-                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
+                    <td className="px-4 py-3 capitalize text-xs text-gray-700 dark:text-neutral-300">{o.status}</td>
+                    <td className="px-4 py-3 text-gray-400 dark:text-neutral-500 text-xs">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {filtered.length === 0 && (
-              <div className="py-12 text-center text-gray-400 dark:text-slate-500">No orders in this period</div>
+              <div className="py-12 text-center text-gray-400 dark:text-neutral-500">No orders in this period</div>
             )}
           </div>
         )}

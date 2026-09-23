@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Save, RefreshCw } from "lucide-react";
+import { getCachedData, setCachedData } from "@/lib/client-cache";
+
+const CACHE_KEY_PRICING = "admin_pricing_rules";
 
 const PAPER_SIZES = ["A4", "A3", "Letter", "Legal"] as const;
 const COLOR_MODES = [
@@ -21,18 +24,24 @@ interface Rule {
 }
 
 export default function PricingPage() {
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedData<Rule[]>(CACHE_KEY_PRICING);
+  const [rules, setRules] = useState<Rule[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const fetch_rules = async () => {
-    const res = await fetch("/api/admin/pricing");
-    if (res.ok) {
-      const data = await res.json();
-      setRules(data.rules || []);
+    try {
+      const res = await fetch("/api/admin/pricing");
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.rules || [];
+        setRules(list);
+        setCachedData(CACHE_KEY_PRICING, list);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => { fetch_rules(); }, []);
@@ -55,6 +64,7 @@ export default function PricingPage() {
     });
     if (res.ok) {
       setSuccess(true);
+      setCachedData(CACHE_KEY_PRICING, rules);
       setTimeout(() => setSuccess(false), 3000);
     }
     setSaving(false);
@@ -94,11 +104,11 @@ export default function PricingPage() {
 
       <div className="space-y-4">
         {grouped.map(({ paper, rules: paperRules }) => (
-          <div key={paper} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800/60 border-b border-gray-100 dark:border-slate-800">
+          <div key={paper} className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm overflow-hidden">
+            <div className="px-5 py-3 bg-gray-50 dark:bg-neutral-900/60 border-b border-gray-100 dark:border-neutral-900">
               <h2 className="font-bold text-gray-800 dark:text-white">{paper}</h2>
             </div>
-            <div className="divide-y divide-gray-50 dark:divide-slate-800">
+            <div className="divide-y divide-gray-50 dark:divide-neutral-900">
               {paperRules.map((rule, idx) => {
                 const globalIdx = rules.findIndex(
                   (r) => r.paperSize === rule.paperSize && r.colorMode === rule.colorMode && r.sides === rule.sides
@@ -106,28 +116,28 @@ export default function PricingPage() {
                 return (
                   <div key={idx} className="flex items-center justify-between px-5 py-4">
                     <div>
-                      <p className="font-medium text-sm text-gray-800 dark:text-slate-200">
+                      <p className="font-medium text-sm text-gray-800 dark:text-neutral-200">
                         {rule.colorMode === "bw" ? "Black & White" : "Color"} ·{" "}
                         {rule.sides === "single" ? "Single-sided" : "Double-sided"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500 dark:text-slate-400 font-medium">₹</span>
+                      <span className="text-gray-500 dark:text-neutral-400 font-medium">₹</span>
                       <input
                         type="number"
                         step="0.5"
                         min="0"
                         value={rule.pricePerPage}
                         onChange={(e) => updateRule(globalIdx, e.target.value)}
-                        className="w-20 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm text-right font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        className="w-20 px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm text-right font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       />
-                      <span className="text-gray-400 dark:text-slate-500 text-sm">/ page</span>
+                      <span className="text-gray-400 dark:text-neutral-500 text-sm">/ page</span>
                     </div>
                   </div>
                 );
               })}
               {paperRules.length === 0 && (
-                <div className="px-5 py-4 text-sm text-gray-400 dark:text-slate-500">No rules configured</div>
+                <div className="px-5 py-4 text-sm text-gray-400 dark:text-neutral-500">No rules configured</div>
               )}
             </div>
           </div>

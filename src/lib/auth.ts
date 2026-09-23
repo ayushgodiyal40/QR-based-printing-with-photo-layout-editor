@@ -31,8 +31,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             passwordHash: users.passwordHash,
             isActive: users.isActive,
             shopId: users.shopId,
+            shopName: shops.name,
           })
           .from(users)
+          .leftJoin(shops, eq(users.shopId, shops.id))
           .where(eq(users.email, credentials.email as string))
           .limit(1);
 
@@ -45,11 +47,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         if (!valid) return null;
 
-        // Update last login
-        await db
-          .update(users)
+        // Update last login asynchronously (non-blocking, does not delay sign-in response)
+        db.update(users)
           .set({ lastLogin: new Date() })
-          .where(eq(users.id, user.id));
+          .where(eq(users.id, user.id))
+          .catch((err) => console.error("Error updating last login:", err));
 
         return {
           id: user.id,
@@ -57,6 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           shopId: user.shopId,
+          shopName: user.shopName || "Print Shop",
         };
       },
     }),
@@ -67,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.role = (user as any).role;
         token.shopId = (user as any).shopId;
+        token.shopName = (user as any).shopName;
       }
       return token;
     },
@@ -75,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         (session.user as any).role = token.role;
         (session.user as any).shopId = token.shopId;
+        (session.user as any).shopName = token.shopName;
       }
       return session;
     },

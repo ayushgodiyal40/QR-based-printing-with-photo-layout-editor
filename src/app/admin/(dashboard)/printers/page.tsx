@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Printer, Plus, Trash2, Circle } from "lucide-react";
+import { getCachedData, setCachedData } from "@/lib/client-cache";
+
+const CACHE_KEY_PRINTERS = "admin_printers";
 
 export default function PrintersPage() {
-  const [printers, setPrinters] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedData<any[]>(CACHE_KEY_PRINTERS);
+  const [printers, setPrinters] = useState<any[]>(cached || []);
+  const [loading, setLoading] = useState(!cached);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newModel, setNewModel] = useState("");
@@ -14,9 +18,17 @@ export default function PrintersPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchPrinters = async () => {
-    const res = await fetch("/api/admin/printers");
-    if (res.ok) { const d = await res.json(); setPrinters(d.printers || []); }
-    setLoading(false);
+    try {
+      const res = await fetch("/api/admin/printers");
+      if (res.ok) {
+        const d = await res.json();
+        const list = d.printers || [];
+        setPrinters(list);
+        setCachedData(CACHE_KEY_PRINTERS, list);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchPrinters(); }, []);
@@ -53,19 +65,19 @@ export default function PrintersPage() {
 
       {/* Add printer form */}
       {showAdd && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 mb-5 animate-fade-in">
+        <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5 mb-5 animate-fade-in">
           <h2 className="font-bold text-gray-800 dark:text-white mb-4">Add New Printer</h2>
           <div className="space-y-3">
             <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-              placeholder="Printer name (e.g. Canon G2020)" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              placeholder="Printer name (e.g. Canon G2020)" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             <input type="text" value={newModel} onChange={(e) => setNewModel(e.target.value)}
-              placeholder="Model (optional)" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              placeholder="Model (optional)" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-neutral-300 cursor-pointer">
                 <input type="checkbox" checked={supportsColor} onChange={(e) => setSupportsColor(e.target.checked)} className="rounded" />
                 Supports Color
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-neutral-300 cursor-pointer">
                 <input type="checkbox" checked={supportsDuplex} onChange={(e) => setSupportsDuplex(e.target.checked)} className="rounded" />
                 Supports Duplex
               </label>
@@ -76,7 +88,7 @@ export default function PrintersPage() {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Add Printer
               </button>
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:text-white text-sm cursor-pointer">Cancel</button>
+              <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 text-gray-600 dark:text-neutral-400 hover:text-white text-sm cursor-pointer">Cancel</button>
             </div>
           </div>
         </div>
@@ -88,29 +100,29 @@ export default function PrintersPage() {
           {[...Array(3)].map((_, i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}
         </div>
       ) : printers.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-12 text-center">
-          <Printer className="w-12 h-12 text-gray-200 dark:text-slate-700 mx-auto mb-3" />
-          <p className="text-gray-400 dark:text-slate-500 font-medium">No printers added yet</p>
-          <p className="text-gray-300 dark:text-slate-600 text-sm">Add your printers to track them on the dashboard</p>
+        <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 p-12 text-center">
+          <Printer className="w-12 h-12 text-gray-200 dark:text-neutral-800 mx-auto mb-3" />
+          <p className="text-gray-400 dark:text-neutral-500 font-medium">No printers added yet</p>
+          <p className="text-gray-300 dark:text-neutral-600 text-sm">Add your printers to track them on the dashboard</p>
         </div>
       ) : (
         <div className="space-y-3">
           {printers.map((p) => (
-            <div key={p.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/60 rounded-xl flex items-center justify-center">
+            <div key={p.id} className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5 flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-50 dark:bg-neutral-900 rounded-xl flex items-center justify-center border border-transparent dark:border-neutral-800">
                 <Printer className="w-6 h-6 text-indigo-500" />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-gray-900 dark:text-white">{p.name}</p>
-                {p.model && <p className="text-sm text-gray-400 dark:text-slate-400">{p.model}</p>}
+                {p.model && <p className="text-sm text-gray-400 dark:text-neutral-400">{p.model}</p>}
                 <div className="flex gap-2 mt-1">
                   {p.supportsColor && <span className="text-[10px] bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded-full font-medium">Color</span>}
                   {p.supportsDuplex && <span className="text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded-full font-medium">Duplex</span>}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${p.isActive ? "bg-green-500" : "bg-gray-300 dark:bg-slate-700"}`} />
-                <span className="text-xs text-gray-400 dark:text-slate-500">{p.isActive ? "Active" : "Inactive"}</span>
+                <div className={`w-2 h-2 rounded-full ${p.isActive ? "bg-green-500" : "bg-gray-300 dark:bg-neutral-800"}`} />
+                <span className="text-xs text-gray-400 dark:text-neutral-500">{p.isActive ? "Active" : "Inactive"}</span>
               </div>
             </div>
           ))}

@@ -332,7 +332,7 @@ export default function OrderDetailPage() {
         {/* Left: Files */}
         <div className="lg:col-span-2 space-y-4">
           {/* Files */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-gray-800 dark:text-white">
                 Files ({files.length})
@@ -351,16 +351,16 @@ export default function OrderDetailPage() {
             {files.length === 0 ? (
               <div className="py-8 text-center space-y-2">
                 <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mx-auto" />
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-300">Receiving files from customer phone...</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">Live syncing automatically, no need to refresh</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-neutral-300">Receiving files from customer phone...</p>
+                <p className="text-xs text-gray-400 dark:text-neutral-500">Live syncing automatically, no need to refresh</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {files.map((file) => {
                   const isImage = file.mimeType?.startsWith("image/") || /\.(jpe?g|png|webp|bmp|tiff)$/i.test(file.originalName);
                   return (
-                    <div key={file.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-100 dark:border-slate-800/80">
-                      <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 flex items-center justify-center flex-shrink-0">
+                    <div key={file.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900/60 rounded-xl border border-gray-100 dark:border-neutral-900">
+                      <div className="w-10 h-10 bg-white dark:bg-neutral-900 rounded-xl border border-gray-100 dark:border-neutral-800 flex items-center justify-center flex-shrink-0">
                         {file.mimeType === "application/pdf" || file.originalName.toLowerCase().endsWith(".pdf") ? (
                           <FileText className="w-5 h-5 text-red-500" />
                         ) : (
@@ -368,8 +368,8 @@ export default function OrderDetailPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-800 dark:text-slate-200 truncate">{file.originalName}</p>
-                        <p className="text-xs text-gray-400 dark:text-slate-400">
+                        <p className="font-medium text-sm text-gray-800 dark:text-neutral-200 truncate">{file.originalName}</p>
+                        <p className="text-xs text-gray-400 dark:text-neutral-400">
                           {formatBytes(file.sizeBytes)}
                           {file.pageCount && ` · ${file.pageCount} page${file.pageCount !== 1 ? "s" : ""}`}
                           {file.imageWidth && ` · ${file.imageWidth}×${file.imageHeight}px`}
@@ -379,7 +379,7 @@ export default function OrderDetailPage() {
                         {isImage && (
                           <Link
                             href={`/admin/studio?orderId=${id}`}
-                            className="p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
+                            className="p-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
                             title="Edit & Arrange in Photo Studio"
                           >
                             <Sparkles className="w-4 h-4" />
@@ -400,14 +400,14 @@ export default function OrderDetailPage() {
                         </button>
                         <button
                           onClick={() => openPreview(file)}
-                          className="p-2 rounded-lg text-gray-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
+                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
                           title="Preview File"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => downloadFile(file)}
-                          className="p-2 rounded-lg text-gray-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors cursor-pointer"
+                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
                           title="Download File"
                         >
                           <Download className="w-4 h-4" />
@@ -415,7 +415,7 @@ export default function OrderDetailPage() {
                         <button
                           onClick={() => deleteSingleFile(file)}
                           disabled={deletingFileId === file.id}
-                          className="p-2 rounded-lg text-gray-400 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors cursor-pointer"
+                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
                           title="Delete Unwanted File"
                         >
                           {deletingFileId === file.id ? (
@@ -433,7 +433,7 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Notes */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5">
             <h2 className="font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-indigo-500" />
               Internal Notes
@@ -441,9 +441,9 @@ export default function OrderDetailPage() {
             {notes.length > 0 && (
               <div className="space-y-3 mb-4">
                 {notes.map((n) => (
-                  <div key={n.id} className="bg-yellow-50 dark:bg-amber-950/30 border border-yellow-100 dark:border-amber-900/50 rounded-xl p-3">
+                  <div key={n.id} className="bg-yellow-50 dark:bg-neutral-900 border border-yellow-100 dark:border-neutral-800 rounded-xl p-3">
                     <p className="text-sm text-gray-700 dark:text-amber-200">{n.note}</p>
-                    <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
+                    <p className="text-xs text-gray-400 dark:text-neutral-400 mt-1">
                       {new Date(n.createdAt).toLocaleString("en-IN")}
                     </p>
                   </div>
@@ -456,7 +456,7 @@ export default function OrderDetailPage() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Add a note…"
-                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 onKeyDown={(e) => e.key === "Enter" && addNote()}
               />
               <button
@@ -473,16 +473,16 @@ export default function OrderDetailPage() {
         {/* Right: Controls */}
         <div className="space-y-4">
           {/* Customer */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5">
             <h2 className="font-bold text-gray-800 dark:text-white mb-3">Customer</h2>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{order.customerName || "Walk-in"}</p>
             {order.customerPhone && (
-              <p className="text-sm text-gray-500 dark:text-slate-400">{order.customerPhone}</p>
+              <p className="text-sm text-gray-500 dark:text-neutral-400">{order.customerPhone}</p>
             )}
           </div>
 
           {/* Payment & Soundbox Verification Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-purple-100 dark:border-purple-900/40 shadow-sm p-5 space-y-3">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-purple-100 dark:border-purple-950/60 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-1.5 text-sm">
                 <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -499,22 +499,22 @@ export default function OrderDetailPage() {
               </span>
             </div>
 
-            <div className="bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs space-y-1.5 border border-gray-100 dark:border-slate-800">
+            <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3 text-xs space-y-1.5 border border-gray-100 dark:border-neutral-800">
               <div className="flex justify-between items-center">
-                <span className="text-gray-500 dark:text-slate-400">Total Amount:</span>
+                <span className="text-gray-500 dark:text-neutral-400">Total Amount:</span>
                 <span className="text-sm font-black text-gray-900 dark:text-white">
                   ₹{order.estimatedPrice || "—"}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-500 dark:text-slate-400">Payment Mode:</span>
+                <span className="text-gray-500 dark:text-neutral-400">Payment Mode:</span>
                 <span className="font-semibold uppercase text-purple-700 dark:text-purple-300">
                   {order.paymentMethod === "upi" ? "PhonePe / UPI" : "Cash"}
                 </span>
               </div>
               {order.paymentReference && (
-                <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-slate-700">
-                  <span className="text-gray-500 dark:text-slate-400">Ref / UTR:</span>
+                <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-neutral-800">
+                  <span className="text-gray-500 dark:text-neutral-400">Ref / UTR:</span>
                   <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
                     {order.paymentReference}
                   </span>
@@ -549,7 +549,7 @@ export default function OrderDetailPage() {
                 <button
                   onClick={() => updatePayment("unpaid")}
                   disabled={saving}
-                  className="col-span-2 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 text-gray-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+                  className="col-span-2 py-1.5 rounded-xl bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 text-gray-700 dark:text-neutral-300 font-semibold text-xs transition-colors cursor-pointer"
                 >
                   Mark as Unpaid
                 </button>
@@ -558,16 +558,16 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Order settings editor */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 space-y-4">
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5 space-y-4">
             <h2 className="font-bold text-gray-800 dark:text-white">Print Settings</h2>
 
             {/* Status */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Status</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Status</label>
               <select
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -577,7 +577,7 @@ export default function OrderDetailPage() {
 
             {/* Priority */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Priority</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Priority</label>
               <div className="grid grid-cols-2 gap-2">
                 {["normal", "high"].map((p) => (
                   <button
@@ -586,7 +586,7 @@ export default function OrderDetailPage() {
                     className={`py-2 rounded-xl text-xs font-semibold capitalize transition-all cursor-pointer ${
                       editPriority === p
                         ? p === "high" ? "bg-red-600 text-white" : "bg-indigo-600 text-white"
-                        : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                        : "bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-300"
                     }`}
                   >
                     {p}
@@ -597,14 +597,14 @@ export default function OrderDetailPage() {
 
             {/* Color */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Color</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Color</label>
               <div className="grid grid-cols-2 gap-2">
                 {[{v:"bw",l:"B&W"},{v:"color",l:"Color"}].map((c) => (
                   <button
                     key={c.v}
                     onClick={() => setEditColor(c.v)}
                     className={`py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      editColor === c.v ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                      editColor === c.v ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-300"
                     }`}
                   >
                     {c.l}
@@ -615,14 +615,14 @@ export default function OrderDetailPage() {
 
             {/* Paper */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Paper</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Paper</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {["A4","A3","Letter","Legal"].map((p) => (
                   <button
                     key={p}
                     onClick={() => setEditPaper(p)}
                     className={`py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      editPaper === p ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                      editPaper === p ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-300"
                     }`}
                   >
                     {p}
@@ -633,30 +633,30 @@ export default function OrderDetailPage() {
 
             {/* Copies */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Copies</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Copies</label>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEditCopies(Math.max(1, editCopies - 1))}
-                  className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 flex items-center justify-center font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 flex items-center justify-center font-bold cursor-pointer"
                 >−</button>
                 <span className="text-xl font-bold w-8 text-center text-gray-900 dark:text-white">{editCopies}</span>
                 <button
                   onClick={() => setEditCopies(editCopies + 1)}
-                  className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold cursor-pointer"
                 >+</button>
               </div>
             </div>
 
             {/* Sides */}
             <div>
-              <label className="text-xs text-gray-500 dark:text-slate-400 font-semibold uppercase tracking-wide block mb-1.5">Sides</label>
+              <label className="text-xs text-gray-500 dark:text-neutral-400 font-semibold uppercase tracking-wide block mb-1.5">Sides</label>
               <div className="grid grid-cols-2 gap-2">
                 {[{v:"single",l:"Single"},{v:"double",l:"Double"}].map((s) => (
                   <button
                     key={s.v}
                     onClick={() => setEditSides(s.v)}
                     className={`py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      editSides === s.v ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300"
+                      editSides === s.v ? "bg-indigo-600 text-white" : "bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-300"
                     }`}
                   >
                     {s.l}
@@ -666,14 +666,14 @@ export default function OrderDetailPage() {
             </div>
 
             {/* Stats */}
-            <div className="bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3 text-sm space-y-1">
+            <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3 text-sm space-y-1">
               <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-slate-400">Total pages</span>
+                <span className="text-gray-500 dark:text-neutral-400">Total pages</span>
                 <span className="font-bold text-gray-900 dark:text-white">{order.totalPages}</span>
               </div>
               {order.estimatedPrice && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500 dark:text-slate-400">Estimated price</span>
+                  <span className="text-gray-500 dark:text-neutral-400">Estimated price</span>
                   <span className="font-bold text-indigo-700 dark:text-indigo-400">₹{order.estimatedPrice}</span>
                 </div>
               )}
@@ -695,14 +695,14 @@ export default function OrderDetailPage() {
       {/* File Preview Modal */}
       {previewUrl && previewFile && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onClick={() => { setPreviewUrl(null); setPreviewFile(null); }}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-3xl p-2 max-w-3xl w-full max-h-[90vh] flex flex-col border border-gray-200 dark:border-slate-800"
+            className="bg-white dark:bg-neutral-950 rounded-3xl p-2 max-w-3xl w-full max-h-[90vh] flex flex-col border border-gray-200 dark:border-neutral-900"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-neutral-900">
               <p className="font-semibold text-gray-800 dark:text-white truncate pr-2">{previewFile.originalName}</p>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button

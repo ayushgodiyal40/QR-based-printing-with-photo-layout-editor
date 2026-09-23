@@ -69,38 +69,54 @@ function StatsCard({
   color: string;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-neutral-950 rounded-2xl p-5 border border-gray-100 dark:border-neutral-900 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
           <Icon className="w-5 h-5 text-white" />
         </div>
       </div>
       <p className="text-3xl font-black text-gray-900 dark:text-white">{value}</p>
-      <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{title}</p>
-      {subtitle && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{subtitle}</p>}
+      <p className="text-sm text-gray-500 dark:text-neutral-400 mt-1">{title}</p>
+      {subtitle && <p className="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">{subtitle}</p>}
     </div>
   );
 }
 
+import { getCachedData, setCachedData } from "@/lib/client-cache";
+
+const CACHE_KEY_STATS = "admin_dashboard_stats";
+const CACHE_KEY_ORDERS = "admin_dashboard_orders";
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedStats = getCachedData<DashboardStats>(CACHE_KEY_STATS);
+  const cachedOrders = getCachedData<Order[]>(CACHE_KEY_ORDERS);
+
+  const [stats, setStats] = useState<DashboardStats | null>(cachedStats);
+  const [orders, setOrders] = useState<Order[]>(cachedOrders || []);
+  const [loading, setLoading] = useState(!cachedStats && (!cachedOrders || cachedOrders.length === 0));
   const [notifSound, setNotifSound] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const esRef = useRef<EventSource | null>(null);
 
   const fetchData = async () => {
-    const [statsRes, ordersRes] = await Promise.all([
-      fetch("/api/admin/dashboard"),
-      fetch("/api/admin/orders?status=received&limit=20&sort=newest"),
-    ]);
-    if (statsRes.ok) setStats(await statsRes.json());
-    if (ordersRes.ok) {
-      const data = await ordersRes.json();
-      setOrders(data.orders);
+    try {
+      const [statsRes, ordersRes] = await Promise.all([
+        fetch("/api/admin/dashboard"),
+        fetch("/api/admin/orders?status=received&limit=20&sort=newest"),
+      ]);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+        setCachedData(CACHE_KEY_STATS, statsData);
+      }
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setOrders(ordersData.orders || []);
+        setCachedData(CACHE_KEY_ORDERS, ordersData.orders || []);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const playNotification = () => {
@@ -187,7 +203,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-sm text-gray-500 dark:text-neutral-400">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               day: "numeric",
@@ -200,13 +216,13 @@ export default function DashboardPage() {
           <button
             onClick={() => setNotifSound(!notifSound)}
             title={notifSound ? "Mute notifications" : "Unmute notifications"}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
+            className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
           >
             {notifSound ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
           </button>
           <button
             onClick={fetchData}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
+            className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -247,8 +263,8 @@ export default function DashboardPage() {
 
 
       {/* Live Order Queue */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-900 flex items-center justify-between">
           <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
             Live Order Queue
@@ -263,22 +279,22 @@ export default function DashboardPage() {
 
         {orders.length === 0 ? (
           <div className="py-16 text-center">
-            <Printer className="w-12 h-12 text-gray-200 dark:text-slate-700 mx-auto mb-3" />
-            <p className="text-gray-400 dark:text-slate-500 font-medium">No pending orders</p>
-            <p className="text-gray-300 dark:text-slate-600 text-sm">New orders will appear here instantly</p>
+            <Printer className="w-12 h-12 text-gray-200 dark:text-neutral-800 mx-auto mb-3" />
+            <p className="text-gray-400 dark:text-neutral-500 font-medium">No pending orders</p>
+            <p className="text-gray-300 dark:text-neutral-600 text-sm">New orders will appear here instantly</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50 dark:divide-slate-800">
+          <div className="divide-y divide-gray-50 dark:divide-neutral-900">
             {orders.map((order) => (
               <Link
                 key={order.id}
                 href={`/admin/orders/${order.id}`}
-                className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors group ${
-                  newOrderIds.has(order.id) ? "bg-indigo-50 dark:bg-indigo-950/40 animate-pulse" : ""
+                className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-neutral-900/60 transition-colors group ${
+                  newOrderIds.has(order.id) ? "bg-indigo-50 dark:bg-neutral-900/80 animate-pulse" : ""
                 }`}
               >
                 {/* Token */}
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-950 dark:to-purple-950 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-200/50 dark:border-indigo-800/50">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-neutral-900 dark:to-neutral-900 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-200/50 dark:border-neutral-800">
                   <span className="text-sm font-black text-indigo-700 dark:text-indigo-300">{order.token}</span>
                 </div>
 
@@ -299,7 +315,7 @@ export default function DashboardPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-gray-400 dark:text-neutral-400 mt-0.5">
                     {order.totalFiles} file{order.totalFiles !== 1 ? "s" : ""} ·{" "}
                     {order.totalPages} pages ·{" "}
                     {order.colorMode === "bw" ? "B&W" : "Color"} · {order.paperSize}
@@ -311,7 +327,7 @@ export default function DashboardPage() {
                   <span className={`badge ${STATUS_COLORS[order.status] || ""} mb-1`}>
                     {order.status}
                   </span>
-                  <p className="text-xs text-gray-400 dark:text-slate-500">
+                  <p className="text-xs text-gray-400 dark:text-neutral-500">
                     {new Date(order.createdAt).toLocaleTimeString("en-IN", {
                       hour: "2-digit",
                       minute: "2-digit",

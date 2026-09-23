@@ -45,17 +45,6 @@ export async function GET(_req: NextRequest) {
   ).length;
   const completedOrders = todayOrders.filter((o: any) => o.status === "completed").length;
 
-  // All-time pending count
-  const allPendingRows = await db
-    .select({ id: orders.id })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.shopId, shopId),
-        // status in received, waiting, processing, printing
-      )
-    );
-
   return NextResponse.json({
     today: {
       orders: totalOrders,

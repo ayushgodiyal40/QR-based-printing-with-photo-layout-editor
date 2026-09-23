@@ -3,21 +3,28 @@
 import { useEffect, useState, useRef } from "react";
 import { Loader2, Download, Copy, ExternalLink, Save, CheckCircle, Volume2, ShieldCheck, QrCode, Upload } from "lucide-react";
 import { extractUpiVpa } from "@/lib/upi";
+import { getCachedData, setCachedData } from "@/lib/client-cache";
+
+const CACHE_KEY_SETTINGS = "admin_settings_shop";
+const CACHE_KEY_QR = "admin_settings_qr";
 
 export default function SettingsPage() {
-  const [shop, setShop] = useState<any>(null);
-  const [qrData, setQrData] = useState<{ uploadUrl: string; qrDataUrl: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedShop = getCachedData<any>(CACHE_KEY_SETTINGS);
+  const cachedQr = getCachedData<any>(CACHE_KEY_QR);
+
+  const [shop, setShop] = useState<any>(cachedShop || null);
+  const [qrData, setQrData] = useState<{ uploadUrl: string; qrDataUrl: string } | null>(cachedQr || null);
+  const [loading, setLoading] = useState(!cachedShop);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-  const [gstNumber, setGstNumber] = useState("");
-  const [upiId, setUpiId] = useState("");
-  const [upiName, setUpiName] = useState("");
+  const [name, setName] = useState(cachedShop?.name || "");
+  const [address, setAddress] = useState(cachedShop?.address || "");
+  const [phone, setPhone] = useState(cachedShop?.phone || "");
+  const [gstNumber, setGstNumber] = useState(cachedShop?.gstNumber || "");
+  const [upiId, setUpiId] = useState(cachedShop?.upiId || "");
+  const [upiName, setUpiName] = useState(cachedShop?.upiName || "");
 
   useEffect(() => {
     Promise.all([
@@ -32,8 +39,12 @@ export default function SettingsPage() {
         setGstNumber(settingsData.shop.gstNumber || "");
         setUpiId(settingsData.shop.upiId || "");
         setUpiName(settingsData.shop.upiName || "");
+        setCachedData(CACHE_KEY_SETTINGS, settingsData.shop);
       }
-      if (qrDataRes?.uploadUrl) setQrData(qrDataRes);
+      if (qrDataRes?.uploadUrl) {
+        setQrData(qrDataRes);
+        setCachedData(CACHE_KEY_QR, qrDataRes);
+      }
       setLoading(false);
     }).catch(() => {
       setLoading(false);
@@ -49,6 +60,7 @@ export default function SettingsPage() {
     });
     if (res.ok) {
       setSuccess(true);
+      setCachedData(CACHE_KEY_SETTINGS, { ...shop, name, address, phone, gstNumber, upiId, upiName });
       setTimeout(() => setSuccess(false), 3000);
     }
     setSaving(false);
@@ -82,7 +94,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
 
       {/* QR Code section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-6">
         <h2 className="font-bold text-gray-800 dark:text-white mb-4">Your Shop QR Code</h2>
         <div className="flex flex-col lg:flex-row gap-6 items-center">
           {qrData?.qrDataUrl && (
@@ -90,20 +102,20 @@ export default function SettingsPage() {
               <img
                 src={qrData.qrDataUrl}
                 alt="Shop QR Code"
-                className="w-48 h-48 rounded-2xl border-4 border-indigo-100 dark:border-indigo-900 bg-white"
+                className="w-48 h-48 rounded-2xl border-4 border-indigo-100 dark:border-indigo-950 bg-white"
               />
             </div>
           )}
           <div className="flex-1 space-y-4">
             <div>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">Customer Upload URL</p>
-              <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 rounded-xl px-4 py-3 border border-gray-100 dark:border-slate-700">
+              <p className="text-sm text-gray-500 dark:text-neutral-400 mb-1">Customer Upload URL</p>
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-neutral-900/80 rounded-xl px-4 py-3 border border-gray-100 dark:border-neutral-800">
                 <code className="text-sm text-indigo-700 dark:text-indigo-400 flex-1 break-all">
                   {qrData?.uploadUrl}
                 </code>
                 <button
                   onClick={copyUrl}
-                  className="text-gray-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white flex-shrink-0 cursor-pointer"
+                  className="text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-white flex-shrink-0 cursor-pointer"
                   title="Copy URL"
                 >
                   {copied ? "✓" : <Copy className="w-4 h-4" />}
@@ -123,14 +135,14 @@ export default function SettingsPage() {
                   href={qrData.uploadUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 text-sm font-medium hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-700 dark:text-neutral-200 text-sm font-medium hover:border-indigo-300 dark:hover:border-indigo-500 transition-colors shadow-sm"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Open Upload Page
                 </a>
               )}
             </div>
-            <p className="text-xs text-gray-400 dark:text-slate-400">
+            <p className="text-xs text-gray-400 dark:text-neutral-400">
               Print this QR code and display it at your shop counter. Customers scan it to send files.
             </p>
           </div>
@@ -138,44 +150,44 @@ export default function SettingsPage() {
       </div>
 
       {/* Shop details */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-6">
         <h2 className="font-bold text-gray-800 dark:text-white mb-4">Shop Details</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Shop Name *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">Shop Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Address</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">Address</label>
             <textarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">Phone</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">GST Number</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">GST Number</label>
               <input
                 type="text"
                 value={gstNumber}
                 onChange={(e) => setGstNumber(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 placeholder="Optional"
               />
             </div>
@@ -184,9 +196,9 @@ export default function SettingsPage() {
       </div>
 
       {/* PhonePe / Direct UPI Soundbox Payment section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-purple-100 dark:border-purple-900/40 shadow-sm p-6 relative overflow-hidden">
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-purple-100 dark:border-purple-950/60 shadow-sm p-6 relative overflow-hidden">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-lg">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-lg">
             ₹
           </div>
           <div>
@@ -196,7 +208,7 @@ export default function SettingsPage() {
                 0% Gateway Fees
               </span>
             </h2>
-            <p className="text-xs text-gray-500 dark:text-slate-400">
+            <p className="text-xs text-gray-500 dark:text-neutral-400">
               Money goes directly to your bank account with zero mediator cuts. When customers pay online, your shop Soundbox announces the payment out loud!
             </p>
           </div>
@@ -217,7 +229,7 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">
                 PhonePe / UPI Handle (VPA) *
               </label>
               <input
@@ -225,14 +237,14 @@ export default function SettingsPage() {
                 value={upiId.includes("sign=") ? extractUpiVpa(upiId) : upiId}
                 onChange={(e) => setUpiId(e.target.value)}
                 placeholder="e.g. Q865308672@ybl or 9876543210@ybl"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
-              <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
+              <p className="text-[11px] text-gray-400 dark:text-neutral-500 mt-1">
                 Enter the exact PhonePe UPI handle linked with your shop Soundbox.
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">
                 Payee / Merchant Display Name
               </label>
               <input
@@ -240,9 +252,9 @@ export default function SettingsPage() {
                 value={upiName}
                 onChange={(e) => setUpiName(e.target.value)}
                 placeholder="e.g. Godiyal General Store"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
-              <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
+              <p className="text-[11px] text-gray-400 dark:text-neutral-500 mt-1">
                 Name visible to customer on PhonePe/GPay when paying.
               </p>
             </div>
@@ -274,12 +286,12 @@ export default function SettingsPage() {
         </div>
 
         {/* Database & Storage Optimization Section */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-100 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-neutral-950 rounded-2xl p-6 border border-gray-100 dark:border-neutral-900 shadow-sm space-y-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <span>🧹</span> Database & Network Bandwidth Optimization
             </h2>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
               Purge heavy raw base64 file payloads from completed and deleted orders to reclaim Neon database storage and prevent transfer quota alerts.
             </p>
           </div>
@@ -309,7 +321,7 @@ export default function SettingsPage() {
                 alert("Request failed. Please check network connection.");
               }
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 text-xs font-semibold cursor-pointer transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 text-gray-700 dark:text-neutral-200 text-xs font-semibold cursor-pointer transition-all shadow-sm"
           >
             <span>🗑️</span> Clean Database & Free Up Quota
           </button>
