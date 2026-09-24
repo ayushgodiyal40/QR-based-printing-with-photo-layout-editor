@@ -64,7 +64,7 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -72,41 +72,41 @@ export default function SetupPage() {
             <Printer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PrintShop Setup</h1>
-          <p className="text-slate-400 text-sm mt-1">First-time configuration wizard</p>
+          <p className="text-neutral-400 text-sm mt-1">First-time configuration wizard</p>
         </div>
 
         {step === 3 && result ? (
           // Success
-          <div className="bg-slate-800 rounded-3xl p-8 text-center border border-slate-700 shadow-2xl">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-neutral-950 rounded-3xl p-8 text-center border border-neutral-900 shadow-2xl">
+            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Setup Complete!</h2>
-            <p className="text-slate-400 text-sm mb-6">Your print shop is ready to use.</p>
+            <p className="text-neutral-400 text-sm mb-6">Your print shop is ready to use.</p>
 
-            <div className="bg-slate-700 rounded-2xl p-4 mb-6 text-left space-y-3">
+            <div className="bg-neutral-900 rounded-2xl p-4 mb-6 text-left space-y-3 border border-neutral-800">
               <div>
-                <p className="text-xs text-slate-400">Admin login URL</p>
-                <p className="text-sm text-indigo-300 font-mono">/admin</p>
+                <p className="text-xs text-neutral-400">Admin login URL</p>
+                <p className="text-sm text-indigo-400 font-mono">/admin</p>
               </div>
               <div>
-                <p className="text-xs text-slate-400">Customer upload URL</p>
-                <p className="text-sm text-indigo-300 font-mono">{result.uploadUrl}</p>
+                <p className="text-xs text-neutral-400">Customer upload URL</p>
+                <p className="text-sm text-indigo-400 font-mono">{result.uploadUrl}</p>
               </div>
             </div>
 
             <button
               onClick={() => router.push("/admin")}
-              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
+              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               Go to Admin Dashboard →
             </button>
           </div>
         ) : (
-          <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700 shadow-2xl space-y-5">
+          <div className="bg-neutral-950 rounded-3xl p-8 border border-neutral-900 shadow-2xl space-y-5">
             {/* Shop name */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 Shop Name *
               </label>
               <input
@@ -114,13 +114,13 @@ export default function SetupPage() {
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
                 placeholder="e.g. Rajesh Print Center"
-                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
             </div>
 
             {/* Admin name */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 Owner Name *
               </label>
               <input
@@ -128,13 +128,13 @@ export default function SetupPage() {
                 value={adminName}
                 onChange={(e) => setAdminName(e.target.value)}
                 placeholder="Your full name"
-                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
             </div>
 
             {/* Admin email */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 Admin Email *
               </label>
               <input
@@ -142,13 +142,13 @@ export default function SetupPage() {
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
                 placeholder="admin@yourshop.com"
-                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
             </div>
 
             {/* Admin password */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
                 Admin Password * (min 8 characters)
               </label>
               <input
@@ -156,12 +156,12 @@ export default function SetupPage() {
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
                 placeholder="Choose a strong password"
-                className="w-full px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
               />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-red-400 bg-red-900/30 rounded-xl p-3 text-sm">
+              <div className="flex items-center gap-2 text-red-400 bg-red-950/40 border border-red-900/50 rounded-xl p-3 text-sm">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>
@@ -170,7 +170,7 @@ export default function SetupPage() {
             <button
               onClick={handleSetup}
               disabled={loading || !shopName || !adminEmail || !adminPassword || adminPassword.length < 8}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg cursor-pointer mt-2"
             >
               {loading ? (
                 <>
@@ -183,6 +183,13 @@ export default function SetupPage() {
             </button>
           </div>
         )}
+
+        <p className="text-center text-neutral-500 text-xs mt-6">
+          Already configured?{" "}
+          <a href="/admin" className="text-indigo-400 hover:underline">
+            Sign in to Admin
+          </a>
+        </p>
       </div>
     </div>
   );

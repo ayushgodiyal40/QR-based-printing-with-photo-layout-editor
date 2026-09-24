@@ -14,7 +14,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import ThemeToggle from "@/components/ThemeToggle";
 
 interface DashboardStats {
   today: {
@@ -212,7 +211,6 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           <button
             onClick={() => setNotifSound(!notifSound)}
             title={notifSound ? "Mute notifications" : "Unmute notifications"}
@@ -263,19 +261,20 @@ export default function DashboardPage() {
 
 
       {/* Live Order Queue */}
-      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-neutral-900 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live Order Queue
-          </h2>
-          <Link
-            href="/admin/orders"
-            className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
-          >
-            View all →
-          </Link>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          Live Order Queue
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        </h2>
+        <Link
+          href="/admin/orders"
+          className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+        >
+          View all →
+        </Link>
+      </div>
+
+      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm overflow-hidden">
 
         {orders.length === 0 ? (
           <div className="py-16 text-center">

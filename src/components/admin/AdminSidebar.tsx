@@ -134,13 +134,13 @@ export default function AdminSidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-neutral-900">
+        <div className="px-3 py-4 border-t border-neutral-900">
           <form action="/api/auth/signout" method="POST">
             <button
               type="submit"
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-sm font-medium cursor-pointer"
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-sm font-medium cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4 flex-shrink-0" />
               Sign out
             </button>
           </form>
