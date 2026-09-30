@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart2, Download, Loader2 } from "lucide-react";
-import { getCachedData, setCachedData } from "@/lib/client-cache";
+import { BarChart2, Download, Loader2, Trash2 } from "lucide-react";
+import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
 
 const CACHE_KEY_REPORTS = "admin_reports_orders";
 
@@ -11,9 +11,35 @@ export default function ReportsPage() {
   const [orders, setOrders] = useState<any[]>(cached || []);
   const [loading, setLoading] = useState(!cached);
   const [period, setPeriod] = useState("today");
+  const [clearingOrders, setClearingOrders] = useState(false);
+
+  const clearAllPastOrders = async () => {
+    const confirmed = confirm(
+      "Are you sure you want to permanently delete ALL past orders?\n\nThis will clear all historical order records and reset report statistics to zero, while all future orders will continue to be tracked normally."
+    );
+    if (!confirmed) return;
+
+    setClearingOrders(true);
+    try {
+      const res = await fetch("/api/admin/reports/purge", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders([]);
+        invalidateCache();
+        alert(data.message || "All past orders have been cleared. Future orders will be recorded fresh.");
+      } else {
+        alert(data.error || "Failed to clear past orders.");
+      }
+    } catch (err) {
+      console.error("Purge error:", err);
+      alert("Failed to delete past orders. Please try again.");
+    } finally {
+      setClearingOrders(false);
+    }
+  };
 
   useEffect(() => {
-    fetch("/api/admin/orders?limit=500&status=all")
+    fetch("/api/admin/orders?limit=5000&status=all&includeDeleted=true")
       .then((r) => (r.ok ? r.json() : { orders: [] }))
       .then((d) => {
         const list = d.orders || [];
@@ -72,6 +98,19 @@ export default function ReportsPage() {
           <button onClick={exportCSV}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-md cursor-pointer">
             <Download className="w-4 h-4" /> Export CSV
+          </button>
+          <button
+            onClick={clearAllPastOrders}
+            disabled={clearingOrders || orders.length === 0}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 text-sm font-semibold cursor-pointer transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Permanently delete all past orders and reset report stats"
+          >
+            {clearingOrders ? (
+              <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-400" />
+            ) : (
+              <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+            )}
+            <span>Clear Past Orders</span>
           </button>
         </div>
       </div>

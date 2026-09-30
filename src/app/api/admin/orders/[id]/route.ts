@@ -161,7 +161,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -170,9 +170,11 @@ export async function DELETE(
   const shopId = (session.user as any).shopId as string;
   const userId = session.user.id as string;
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const markCompleted = searchParams.get("completed") === "true";
 
   const orderRows = await db
-    .select({ id: orders.id })
+    .select({ id: orders.id, paymentStatus: orders.paymentStatus })
     .from(orders)
     .where(and(eq(orders.id, id), eq(orders.shopId, shopId), eq(orders.isDeleted, false)))
     .limit(1);
@@ -186,14 +188,27 @@ export async function DELETE(
     .where(eq(orderFiles.orderId, id));
 
   // Soft delete order: marks isDeleted = true and records deletedAt.
+  // If markCompleted is true, sets status="completed", completedAt=now, and paymentStatus="paid".
   // This removes the order from the Orders menu and Live Queue while preserving
-  // dashboard metrics (Orders Today, Pages Printed, Revenue).
+  // dashboard and report metrics (Orders, Pages Printed, Revenue, Completed).
+  const orderUpdates: Record<string, any> = {
+    isDeleted: true,
+    deletedAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (markCompleted) {
+    orderUpdates.status = "completed";
+    orderUpdates.completedAt = new Date();
+    orderUpdates.paymentStatus = "paid";
+  }
+
   await db
     .update(orders)
-    .set({ isDeleted: true, deletedAt: new Date(), updatedAt: new Date() })
+    .set(orderUpdates)
     .where(eq(orders.id, id));
 
-  // Soft delete associated order files and clear blob data
+  // Soft delete associated order files and clear blob data immediately to reclaim memory
   await db
     .update(orderFiles)
     .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
@@ -204,12 +219,15 @@ export async function DELETE(
     shopId,
     orderId: id,
     userId,
-    action: "order.deleted",
+    action: markCompleted ? "order.completed" : "order.deleted",
   }).catch(() => {});
 
   // Real-time broadcast to all admin listeners
   try {
-    notifyShop(shopId, { event: "order_deleted", data: { orderId: id } });
+    notifyShop(shopId, {
+      event: "order_deleted",
+      data: { orderId: id, completed: markCompleted },
+    });
   } catch {}
 
   // Asynchronously clean up uploaded files from storage to save disk space
@@ -219,5 +237,5 @@ export async function DELETE(
     }).catch(() => {});
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, completed: markCompleted });
 }

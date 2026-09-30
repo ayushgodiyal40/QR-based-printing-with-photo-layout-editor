@@ -15,16 +15,25 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
   const sort = searchParams.get("sort") || "oldest";
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "50");
-  const offset = (page - 1) * limit;
+  const limitParam = searchParams.get("limit");
+  const limit = limitParam === "all" ? 10000 : parseInt(limitParam || "50");
+  const offset = (page - 1) * (limitParam === "all" ? 0 : limit);
+  const includeDeleted = searchParams.get("includeDeleted") === "true";
 
   const conditions = [
     eq(orders.shopId, shopId),
-    eq(orders.isDeleted, false),
   ];
 
+  if (!includeDeleted) {
+    conditions.push(eq(orders.isDeleted, false));
+  }
+
   if (status && status !== "all") {
-    conditions.push(eq(orders.status, status as any));
+    if (status === "active") {
+      conditions.push(inArray(orders.status, ["received", "waiting", "processing", "printing"]));
+    } else {
+      conditions.push(eq(orders.status, status as any));
+    }
   }
 
   const orderList = await db
@@ -46,6 +55,8 @@ export async function GET(req: NextRequest) {
       paymentStatus: orders.paymentStatus,
       paymentMethod: orders.paymentMethod,
       paymentReference: orders.paymentReference,
+      isDeleted: orders.isDeleted,
+      completedAt: orders.completedAt,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
     })

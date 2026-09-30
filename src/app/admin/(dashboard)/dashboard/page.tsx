@@ -101,7 +101,7 @@ export default function DashboardPage() {
     try {
       const [statsRes, ordersRes] = await Promise.all([
         fetch("/api/admin/dashboard"),
-        fetch("/api/admin/orders?status=received&limit=20&sort=newest"),
+        fetch("/api/admin/orders?status=active&limit=25&sort=newest"),
       ]);
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -168,6 +168,7 @@ export default function DashboardPage() {
         if (orderId) {
           setOrders((prev) => prev.filter((o) => o.id !== orderId));
         }
+        fetchData();
       } catch {}
     });
 

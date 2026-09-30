@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { Loader2, Download, Copy, ExternalLink, Save, CheckCircle, Volume2, ShieldCheck, QrCode, Upload } from "lucide-react";
-import { extractUpiVpa } from "@/lib/upi";
+import { useEffect, useState } from "react";
+import { Loader2, Download, Copy, ExternalLink, Save } from "lucide-react";
 import { getCachedData, setCachedData } from "@/lib/client-cache";
 
 const CACHE_KEY_SETTINGS = "admin_settings_shop";
@@ -192,98 +191,19 @@ export default function SettingsPage() {
               />
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* PhonePe / Direct UPI Soundbox Payment section */}
-      <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-purple-100 dark:border-purple-950/60 shadow-sm p-6 relative overflow-hidden">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-lg">
-            ₹
-          </div>
-          <div>
-            <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              PhonePe / Direct UPI Payment (Soundbox Integration)
-              <span className="text-[11px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
-                0% Gateway Fees
-              </span>
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-neutral-400">
-              Money goes directly to your bank account with zero mediator cuts. When customers pay online, your shop Soundbox announces the payment out loud!
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {upiId.includes("sign=") && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                <span>Verified PhonePe Soundbox Standee Active ({extractUpiVpa(upiId)})</span>
-              </div>
-              <span className="text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 font-bold px-2 py-0.5 rounded-full">
-                Cryptographically Signed ✓
-              </span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">
-                PhonePe / UPI Handle (VPA) *
-              </label>
-              <input
-                type="text"
-                value={upiId.includes("sign=") ? extractUpiVpa(upiId) : upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                placeholder="e.g. Q865308672@ybl or 9876543210@ybl"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-              <p className="text-[11px] text-gray-400 dark:text-neutral-500 mt-1">
-                Enter the exact PhonePe UPI handle linked with your shop Soundbox.
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-1.5">
-                Payee / Merchant Display Name
-              </label>
-              <input
-                type="text"
-                value={upiName}
-                onChange={(e) => setUpiName(e.target.value)}
-                placeholder="e.g. Godiyal General Store"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-              <p className="text-[11px] text-gray-400 dark:text-neutral-500 mt-1">
-                Name visible to customer on PhonePe/GPay when paying.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 bg-purple-50/70 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/30 flex items-start gap-3">
-            <div className="text-purple-600 dark:text-purple-400 font-bold text-lg mt-0.5">🔊</div>
-            <div className="text-xs text-purple-900 dark:text-purple-200 space-y-1">
-              <p className="font-semibold">How this works for you and your customers:</p>
-              <ul className="list-disc list-inside space-y-0.5 text-purple-800 dark:text-purple-300">
-                <li>Files and orders are sent <strong>immediately</strong> without blocking.</li>
-                <li>Cash payers can just show their token and pay cash at the counter.</li>
-                <li>Customers who prefer online payment can scan your verified PhonePe Soundbox QR directly on screen or tap the pay button.</li>
-                <li>Your <strong>PhonePe Soundbox</strong> in the shop will loudly announce: <em>&quot;PhonePe par ₹X prapt hue!&quot;</em></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="pt-2 flex items-center justify-between">
+          <div className="pt-2">
             <button
               onClick={save}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 text-white font-medium text-sm hover:bg-purple-700 disabled:opacity-60 shadow-md cursor-pointer transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 disabled:opacity-60 shadow-md cursor-pointer transition-all"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {success ? "Saved! ✓" : "Save Settings"}
             </button>
           </div>
         </div>
+      </div>
 
         {/* Database & Storage Optimization Section */}
         <div className="bg-white dark:bg-neutral-950 rounded-2xl p-6 border border-gray-100 dark:border-neutral-900 shadow-sm space-y-4">
@@ -327,6 +247,5 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
-    </div>
   );
 }

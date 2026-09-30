@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "badge-failed",
 };
 
-import { getCachedData, setCachedData } from "@/lib/client-cache";
+import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
 
 const getOrdersCacheKey = (status: string, sort: string) => `admin_orders_${status}_${sort}`;
 
@@ -75,6 +75,7 @@ export default function OrdersPage() {
     setDeletingId(order.id);
     const res = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
     if (res.ok) {
+      invalidateCache();
       setOrders((prev) => {
         const next = prev.filter((o) => o.id !== order.id);
         setCachedData(getOrdersCacheKey(status, sort), next);

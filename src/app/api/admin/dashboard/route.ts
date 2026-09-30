@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
-import { eq, and, gte, count, sum } from "drizzle-orm";
+import { eq, and, gte, or } from "drizzle-orm";
 
 export async function GET(_req: NextRequest) {
   const session = await auth();
@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest) {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // Today's orders (includes all orders placed today; metrics are retained even if order is removed from active queue)
+  // Today's orders (includes all orders placed or completed today; metrics are permanently retained even when order is completed and deleted from active queue)
   const todayOrders = await db
     .select({
       id: orders.id,
@@ -21,9 +21,19 @@ export async function GET(_req: NextRequest) {
       totalPages: orders.totalPages,
       estimatedPrice: orders.estimatedPrice,
       isDeleted: orders.isDeleted,
+      createdAt: orders.createdAt,
+      completedAt: orders.completedAt,
     })
     .from(orders)
-    .where(and(eq(orders.shopId, shopId), gte(orders.createdAt, todayStart)));
+    .where(
+      and(
+        eq(orders.shopId, shopId),
+        or(
+          gte(orders.createdAt, todayStart),
+          gte(orders.completedAt, todayStart)
+        )
+      )
+    );
 
   // Retain all historical metrics for today
   const totalOrders = todayOrders.length;

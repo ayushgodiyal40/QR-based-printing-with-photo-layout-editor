@@ -18,14 +18,13 @@ import {
   ArrowUp,
   Clock,
   Sparkles,
-  Volume2,
   CreditCard,
-  ShieldCheck,
   Check,
 } from "lucide-react";
 import Link from "next/link";
 import { printImage, printPdf } from "@/lib/printUtils";
 import PdfViewer from "@/components/PdfViewer";
+import { invalidateCache } from "@/lib/client-cache";
 
 const STATUS_OPTIONS = [
   { value: "received", label: "Received" },
@@ -68,6 +67,8 @@ export default function OrderDetailPage() {
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [printingFileId, setPrintingFileId] = useState<string | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
+  const [completingOrder, setCompletingOrder] = useState(false);
+  const [completedSuccess, setCompletedSuccess] = useState(false);
 
   // Editable settings
   const [editStatus, setEditStatus] = useState("");
@@ -166,22 +167,6 @@ export default function OrderDetailPage() {
     setSaving(false);
   };
 
-  const updatePayment = async (status: "unpaid" | "paid", method?: "cash" | "upi") => {
-    setSaving(true);
-    const res = await fetch(`/api/admin/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentStatus: status,
-        ...(method ? { paymentMethod: method } : {}),
-      }),
-    });
-    if (res.ok) {
-      fetchOrder();
-    }
-    setSaving(false);
-  };
-
   const addNote = async () => {
     if (!note.trim()) return;
     setAddingNote(true);
@@ -257,6 +242,30 @@ export default function OrderDetailPage() {
     setDeletingFileId(null);
   };
 
+  const completeOrder = async () => {
+    if (completingOrder || deletingOrder) return;
+    setCompletingOrder(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}?completed=true`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        invalidateCache();
+        setCompletedSuccess(true);
+        setTimeout(() => {
+          router.push("/admin/dashboard");
+        }, 850);
+      } else {
+        alert("Failed to complete order. Please try again.");
+        setCompletingOrder(false);
+      }
+    } catch (err) {
+      console.error("Complete order error:", err);
+      alert("An error occurred while completing the order.");
+      setCompletingOrder(false);
+    }
+  };
+
   const deleteEntireOrder = async () => {
     if (!confirm(`Are you sure you want to delete this client order (#${order.token}) permanently?`)) return;
     setDeletingOrder(true);
@@ -264,6 +273,7 @@ export default function OrderDetailPage() {
       method: "DELETE",
     });
     if (res.ok) {
+      invalidateCache();
       router.push("/admin/orders");
     } else {
       setDeletingOrder(false);
@@ -314,18 +324,52 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        <button
-          onClick={deleteEntireOrder}
-          disabled={deletingOrder}
-          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold text-xs hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer shadow-sm"
-        >
-          {deletingOrder ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Trash2 className="w-4 h-4" />
-          )}
-          Delete Order
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={completeOrder}
+            disabled={completingOrder || deletingOrder}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all duration-300 shadow-md cursor-pointer ${
+              completedSuccess
+                ? "bg-emerald-500 text-white scale-105 shadow-emerald-500/40 ring-4 ring-emerald-400/40"
+                : completingOrder
+                ? "bg-emerald-700 text-white opacity-90 cursor-wait"
+                : "bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white hover:shadow-lg"
+            }`}
+            title="Mark order completed and remove from live queue"
+          >
+            {completedSuccess ? (
+              <>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-white text-emerald-600 shadow-sm animate-pulse">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </span>
+                <span className="font-black tracking-wide">Order Completed!</span>
+              </>
+            ) : completingOrder ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Completing…</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                <span>Mark Completed</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={deleteEntireOrder}
+            disabled={deletingOrder || completingOrder}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 font-bold text-xs hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+          >
+            {deletingOrder ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            Delete Order
+          </button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -481,79 +525,22 @@ export default function OrderDetailPage() {
             )}
           </div>
 
-          {/* Payment & Soundbox Verification Card */}
-          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-purple-100 dark:border-purple-950/60 shadow-sm p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-1.5 text-sm">
-                <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                Payment Status
-              </h2>
-              <span
-                className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                  order.paymentStatus === "paid"
-                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                    : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
-                }`}
-              >
-                {order.paymentStatus === "paid" ? "Paid ✓" : "Unpaid"}
-              </span>
-            </div>
+          {/* Payment Status Card - Displays Only Total Amount to be Paid (Highlighted in Green) */}
+          <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-5 space-y-3">
+            <h2 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 text-sm">
+              <CreditCard className="w-4 h-4 text-emerald-500" />
+              Payment Status
+            </h2>
 
-            <div className="bg-gray-50 dark:bg-neutral-900/60 rounded-xl p-3 text-xs space-y-1.5 border border-gray-100 dark:border-neutral-800">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 dark:text-neutral-400">Total Amount:</span>
-                <span className="text-sm font-black text-gray-900 dark:text-white">
-                  ₹{order.estimatedPrice || "—"}
+            <div className="bg-emerald-500/10 dark:bg-emerald-950/40 rounded-xl p-4 border border-emerald-500/30 dark:border-emerald-600/30 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">
+                  Total Amount to be Paid
+                </span>
+                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block tracking-tight">
+                  ₹{order.estimatedPrice || "0.00"}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500 dark:text-neutral-400">Payment Mode:</span>
-                <span className="font-semibold uppercase text-purple-700 dark:text-purple-300">
-                  {order.paymentMethod === "upi" ? "PhonePe / UPI" : "Cash"}
-                </span>
-              </div>
-              {order.paymentReference && (
-                <div className="flex justify-between items-center pt-1 border-t border-gray-200 dark:border-neutral-800">
-                  <span className="text-gray-500 dark:text-neutral-400">Ref / UTR:</span>
-                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    {order.paymentReference}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Quick 1-click verification buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              {order.paymentStatus !== "paid" ? (
-                <>
-                  <button
-                    onClick={() => updatePayment("paid", "upi")}
-                    disabled={saving}
-                    className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
-                    title="Mark paid via PhonePe Soundbox"
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    Paid (PhonePe)
-                  </button>
-                  <button
-                    onClick={() => updatePayment("paid", "cash")}
-                    disabled={saving}
-                    className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors cursor-pointer"
-                    title="Mark paid via Cash"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    Paid (Cash)
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => updatePayment("unpaid")}
-                  disabled={saving}
-                  className="col-span-2 py-1.5 rounded-xl bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 text-gray-700 dark:text-neutral-300 font-semibold text-xs transition-colors cursor-pointer"
-                >
-                  Mark as Unpaid
-                </button>
-              )}
             </div>
           </div>
 
@@ -687,6 +674,38 @@ export default function OrderDetailPage() {
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               {saving ? "Saving…" : "Save Changes"}
+            </button>
+
+            {/* Complete Order Primary Action */}
+            <button
+              onClick={completeOrder}
+              disabled={completingOrder || deletingOrder}
+              className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 cursor-pointer ${
+                completedSuccess
+                  ? "bg-emerald-500 text-white scale-[1.02] shadow-emerald-500/40 ring-4 ring-emerald-400/40"
+                  : completingOrder
+                  ? "bg-emerald-700 text-white opacity-90 cursor-wait"
+                  : "bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white hover:shadow-lg"
+              }`}
+            >
+              {completedSuccess ? (
+                <>
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white text-emerald-600 shadow-sm animate-pulse">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </span>
+                  <span className="font-black text-base">Order Completed!</span>
+                </>
+              ) : completingOrder ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Completing Order…</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  <span>Mark Completed</span>
+                </>
+              )}
             </button>
           </div>
         </div>
