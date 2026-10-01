@@ -148,12 +148,22 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   const fetchOrder = async () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`);
-      if (!res.ok) throw new Error("Order not found.");
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Order not found.");
+        }
+        throw new Error("Failed to load order.");
+      }
       const data = await res.json();
       setOrder(data);
       setError(null);
     } catch (e: any) {
-      setError(e.message);
+      setOrder((current) => {
+        if (!current) {
+          setError(e.message);
+        }
+        return current;
+      });
     } finally {
       setLoading(false);
     }
@@ -169,6 +179,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
     es.addEventListener("status_update", (e) => {
       const data = JSON.parse(e.data);
       setOrder((prev) => prev ? { ...prev, status: data.status, ...data } : prev);
+      setError(null);
     });
 
     es.onerror = () => {
@@ -236,9 +247,9 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
     );
   }
 
-  const statusConfig = STATUS_CONFIG[order.status];
+  const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.waiting;
   const currentStepIdx = STATUS_STEPS.indexOf(order.status as OrderStatus);
-  const isTerminal = ["completed", "cancelled", "failed", "expired"].includes(order.status);
+  const isTerminal = ["cancelled", "failed", "expired"].includes(order.status);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
@@ -313,12 +324,15 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
               {STATUS_STEPS.map((s, i) => {
                 const done = i <= currentStepIdx;
                 const active = i === currentStepIdx;
+                const isCompleted = order.status === "completed";
                 return (
                   <div key={s} className="flex flex-col items-center flex-1">
                     <div
                       className={`w-3 h-3 rounded-full mb-1 transition-all ${
                         done
-                          ? active
+                          ? isCompleted
+                            ? "bg-emerald-600 shadow-sm"
+                            : active
                             ? "bg-indigo-600 scale-150 shadow-md animate-pulse-ring"
                             : "bg-indigo-400"
                           : "bg-gray-200"
@@ -329,17 +343,32 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
               })}
             </div>
             <div className="flex justify-between mt-1">
-              {STATUS_STEPS.map((s) => (
-                <p key={s} className="text-[9px] text-gray-400 text-center flex-1 capitalize font-medium">
-                  {s}
-                </p>
-              ))}
+              {STATUS_STEPS.map((s) => {
+                const isDone = STATUS_STEPS.indexOf(s) <= currentStepIdx;
+                const isCurrent = s === order.status;
+                return (
+                  <p
+                    key={s}
+                    className={`text-[9px] text-center flex-1 capitalize font-medium ${
+                      order.status === "completed"
+                        ? "text-emerald-700 font-semibold"
+                        : isCurrent
+                        ? "text-indigo-700 font-bold"
+                        : isDone
+                        ? "text-gray-600"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {s === "completed" ? "Ready" : s}
+                  </p>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Add More Files Button (allowed while order is not completed/cancelled) */}
-        {!isTerminal && (
+        {!["completed", "cancelled", "failed", "expired"].includes(order.status) && (
           <div className="glass-card rounded-2xl p-4 mb-5 border-2 border-indigo-100 animate-fade-in">
             <input
               ref={fileInputRef}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { orders, orderFiles, shops } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 
 import { generateSignedToken } from "@/lib/signed-url";
 
@@ -36,13 +36,19 @@ export async function GET(
     })
     .from(orders)
     .leftJoin(shops, eq(orders.shopId, shops.id))
-    .where(and(eq(orders.id, id), eq(orders.isDeleted, false)))
+    .where(
+      and(
+        eq(orders.id, id),
+        or(eq(orders.isDeleted, false), eq(orders.status, "completed"))
+      )
+    )
     .limit(1);
 
   if (!orderRows.length) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
+  const isCompleted = orderRows[0].status === "completed";
   const fileRows = await db
     .select({
       id: orderFiles.id,
@@ -54,7 +60,11 @@ export async function GET(
       imageHeight: orderFiles.imageHeight,
     })
     .from(orderFiles)
-    .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)));
+    .where(
+      isCompleted
+        ? eq(orderFiles.orderId, id)
+        : and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false))
+    );
 
   const filesWithUrls = fileRows.map((f: any) => ({
     ...f,

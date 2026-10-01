@@ -21,21 +21,25 @@ export async function GET(req: NextRequest) {
   const fileRows = await db
     .select()
     .from(orderFiles)
-    .where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)))
+    .where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, orderId)))
     .limit(1);
 
   if (!fileRows.length) return new NextResponse("File not found", { status: 404 });
 
   const file = fileRows[0];
 
-  const buffer = await readFile(file.storagePath, file.fileData);
+  try {
+    const buffer = await readFile(file.storagePath, file.fileData);
 
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": file.mimeType,
-      "Content-Disposition": `inline; filename="${encodeURIComponent(file.originalName)}"`,
-      "Content-Length": file.sizeBytes.toString(),
-      "Cache-Control": "private, max-age=900",
-    },
-  });
+    return new NextResponse(new Uint8Array(buffer), {
+      headers: {
+        "Content-Type": file.mimeType,
+        "Content-Disposition": `inline; filename="${encodeURIComponent(file.originalName)}"`,
+        "Content-Length": file.sizeBytes.toString(),
+        "Cache-Control": "private, max-age=900",
+      },
+    });
+  } catch {
+    return new NextResponse("File not found", { status: 404 });
+  }
 }

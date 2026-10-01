@@ -208,11 +208,21 @@ export async function DELETE(
     .set(orderUpdates)
     .where(eq(orders.id, id));
 
-  // Soft delete associated order files and clear blob data immediately to reclaim memory
-  await db
-    .update(orderFiles)
-    .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
-    .where(eq(orderFiles.orderId, id));
+  // Only soft-delete files and wipe storage if permanently deleting the order (not completing it)
+  if (!markCompleted) {
+    // Soft delete associated order files and clear blob data immediately to reclaim memory
+    await db
+      .update(orderFiles)
+      .set({ isDeleted: true, deletedAt: new Date(), fileData: null })
+      .where(eq(orderFiles.orderId, id));
+
+    // Asynchronously clean up uploaded files from storage to save disk space
+    if (filesToDelete.length > 0) {
+      import("@/lib/storage").then(({ deleteFile }) => {
+        Promise.all(filesToDelete.map((f) => deleteFile(f.storagePath).catch(() => {}))).catch(() => {});
+      }).catch(() => {});
+    }
+  }
 
   // Audit log non-blockingly
   audit({
@@ -230,11 +240,14 @@ export async function DELETE(
     });
   } catch {}
 
-  // Asynchronously clean up uploaded files from storage to save disk space
-  if (filesToDelete.length > 0) {
-    import("@/lib/storage").then(({ deleteFile }) => {
-      Promise.all(filesToDelete.map((f) => deleteFile(f.storagePath).catch(() => {}))).catch(() => {});
-    }).catch(() => {});
+  // Real-time broadcast to customer tracking order
+  if (markCompleted) {
+    try {
+      notifyOrder(id, {
+        event: "status_update",
+        data: { status: "completed" },
+      });
+    } catch {}
   }
 
   return NextResponse.json({ success: true, completed: markCompleted });
