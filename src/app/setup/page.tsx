@@ -72,7 +72,7 @@ export default function SetupPage() {
             <Printer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PrintShop Setup</h1>
-          <p className="text-neutral-400 text-sm mt-1">First-time configuration wizard</p>
+          <p className="text-neutral-400 text-sm mt-1">Create your shop & admin account</p>
         </div>
 
         {step === 3 && result ? (
@@ -185,8 +185,8 @@ export default function SetupPage() {
         )}
 
         <p className="text-center text-neutral-500 text-xs mt-6">
-          Already configured?{" "}
-          <a href="/admin" className="text-indigo-400 hover:underline">
+          Already have an account?{" "}
+          <a href="/admin" className="text-indigo-400 hover:text-indigo-300 font-medium hover:underline transition-colors">
             Sign in to Admin
           </a>
         </p>

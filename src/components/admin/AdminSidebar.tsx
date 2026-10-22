@@ -16,7 +16,9 @@ import {
   Menu,
   X,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -40,11 +42,31 @@ export default function AdminSidebar({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   // Sync optimistic href back when navigation completes
   if (optimisticHref && pathname.startsWith(optimisticHref)) {
     setOptimisticHref(null);
   }
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.clear();
+          localStorage.removeItem("admin_settings_shop");
+          localStorage.removeItem("admin_settings_qr");
+        } catch {}
+      }
+      await signOut({ callbackUrl: "/admin", redirect: true });
+    } catch (err) {
+      console.error("Sign out error:", err);
+      window.location.href = "/admin";
+    }
+  };
 
   return (
     <>
@@ -135,15 +157,24 @@ export default function AdminSidebar({
 
         {/* Footer */}
         <div className="px-3 py-4 border-t border-neutral-900">
-          <form action="/api/auth/signout" method="POST">
-            <button
-              type="submit"
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-sm font-medium cursor-pointer"
-            >
-              <LogOut className="w-4 h-4 flex-shrink-0" />
-              Sign out
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 transition-all text-sm font-medium cursor-pointer disabled:opacity-60"
+          >
+            {signingOut ? (
+              <>
+                <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-neutral-400" />
+                Signing out…
+              </>
+            ) : (
+              <>
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                Sign out
+              </>
+            )}
+          </button>
         </div>
       </aside>
     </>

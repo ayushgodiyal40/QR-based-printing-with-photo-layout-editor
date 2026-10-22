@@ -27,19 +27,28 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const cleanEmail = email.trim();
 
-    if (result?.error) {
-      setError("Invalid email or password.");
+    try {
+      const result = await signIn("credentials", {
+        email: cleanEmail,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        console.error("Sign-in error:", result.error);
+        setError("Invalid email or password.");
+        setLoading(false);
+      } else {
+        setSuccess(true);
+        // Immediate clean redirect without race-condition router.refresh()
+        router.replace(callbackUrl);
+      }
+    } catch (err) {
+      console.error("Login exception:", err);
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
-    } else {
-      setSuccess(true);
-      // Immediate clean redirect without race-condition router.refresh()
-      router.replace(callbackUrl);
     }
   };
 
@@ -56,7 +65,7 @@ function LoginForm() {
           required
           autoComplete="email"
           className="w-full px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-          placeholder="admin@printshop.com"
+          placeholder="Enter your email"
         />
       </div>
 
@@ -72,7 +81,7 @@ function LoginForm() {
             required
             autoComplete="current-password"
             className="w-full px-4 py-3 pr-12 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-            placeholder="••••••••"
+            placeholder="Enter your password"
           />
           <button
             type="button"
@@ -135,9 +144,9 @@ export default function AdminLoginPage() {
         </div>
 
         <p className="text-center text-neutral-500 text-xs mt-6">
-          First time?{" "}
-          <a href="/setup" className="text-indigo-400 hover:underline">
-            Run setup wizard
+          Don&apos;t have an account?{" "}
+          <a href="/setup" className="text-indigo-400 hover:text-indigo-300 font-medium hover:underline transition-colors">
+            Create new account
           </a>
         </p>
       </div>

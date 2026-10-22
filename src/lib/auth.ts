@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "@/lib/db";
 import { users, shops } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -22,6 +22,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = (credentials.email as string).trim();
+
         const userRows = await db
           .select({
             id: users.id,
@@ -35,7 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           })
           .from(users)
           .leftJoin(shops, eq(users.shopId, shops.id))
-          .where(eq(users.email, credentials.email as string))
+          .where(ilike(users.email, email))
           .limit(1);
 
         const user = userRows[0];

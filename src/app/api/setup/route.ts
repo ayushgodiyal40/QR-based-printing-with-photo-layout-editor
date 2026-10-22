@@ -48,9 +48,9 @@ export async function POST(req: NextRequest) {
       .insert(users)
       .values({
         shopId: shop.id,
-        email: adminEmail,
+        email: adminEmail.trim().toLowerCase(),
         passwordHash,
-        name: adminName,
+        name: adminName.trim(),
         role: "owner",
       })
       .returning();
