@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Printer, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/admin/dashboard";
 
@@ -16,11 +15,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Warm-up and prefetch dashboard route immediately in the background
-  useEffect(() => {
-    router.prefetch(callbackUrl);
-  }, [callbackUrl, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +36,9 @@ function LoginForm() {
         setLoading(false);
       } else {
         setSuccess(true);
-        // Immediate clean redirect without race-condition router.refresh()
-        router.replace(callbackUrl);
+        // Clean full navigation forces the browser to send fresh auth cookies to the server
+        // and completely eliminates Next.js App Router client-side prefetch/cache lockups
+        window.location.href = callbackUrl;
       }
     } catch (err) {
       console.error("Login exception:", err);

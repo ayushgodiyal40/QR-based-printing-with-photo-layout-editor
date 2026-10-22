@@ -19,6 +19,19 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // If already authenticated and accessing login page, redirect directly to dashboard
+  if (pathname === "/admin") {
+    const sessionToken =
+      req.cookies.get("authjs.session-token")?.value ||
+      req.cookies.get("__Secure-authjs.session-token")?.value ||
+      req.cookies.get("next-auth.session-token")?.value ||
+      req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+    if (sessionToken) {
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
