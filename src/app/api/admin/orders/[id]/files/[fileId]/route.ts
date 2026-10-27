@@ -22,22 +22,21 @@ export async function GET(
   const shopId = (session.user as any).shopId as string;
   const { id, fileId } = await params;
 
-  // Verify order belongs to this shop
-  const orderRows = await db
-    .select({ id: orders.id, shopId: orders.shopId })
-    .from(orders)
-    .where(and(eq(orders.id, id), eq(orders.shopId, shopId)))
-    .limit(1);
+  // Verify order belongs to this shop and fetch file record concurrently
+  const [orderRows, fileRows] = await Promise.all([
+    db
+      .select({ id: orders.id, shopId: orders.shopId })
+      .from(orders)
+      .where(and(eq(orders.id, id), eq(orders.shopId, shopId)))
+      .limit(1),
+    db
+      .select()
+      .from(orderFiles)
+      .where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)))
+      .limit(1),
+  ]);
 
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
-
-  // Get file record
-  const fileRows = await db
-    .select()
-    .from(orderFiles)
-    .where(and(eq(orderFiles.id, fileId), eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)))
-    .limit(1);
-
   if (!fileRows.length) return NextResponse.json({ error: "File not found." }, { status: 404 });
 
   const file = fileRows[0];
@@ -51,13 +50,14 @@ export async function GET(
     return NextResponse.json({ url, fileName: file.originalName, mimeType: file.mimeType });
   }
 
-  await audit({
+  // Non-blocking background audit log so file stream begins immediately
+  audit({
     shopId,
     orderId: id,
     userId: session.user.id,
     action: "file.downloaded",
     details: { fileName: file.originalName },
-  });
+  }).catch(() => {});
 
   const fileBuffer = await readFile(file.storagePath, file.fileData);
 

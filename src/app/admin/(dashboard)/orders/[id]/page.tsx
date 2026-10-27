@@ -24,7 +24,10 @@ import {
 import Link from "next/link";
 import { printImage, printPdf } from "@/lib/printUtils";
 import PdfViewer from "@/components/PdfViewer";
-import { invalidateCache } from "@/lib/client-cache";
+import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
+
+// Global in-memory cache for downloaded/prefetched file blobs so Print/Download/Preview execute in 0ms
+const fileBlobCache = new Map<string, { blob: Blob; url: string }>();
 
 const STATUS_OPTIONS = [
   { value: "received", label: "Received" },
@@ -53,17 +56,36 @@ function formatBytes(b: number) {
 export default function OrderDetailPage() {
   const { id } = useParams();
   const router = useRouter();
+  const orderId = Array.isArray(id) ? id[0] : (id as string);
+  const cacheKey = `admin_order_${orderId}`;
 
-  const [order, setOrder] = useState<any>(null);
-  const [files, setFiles] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Instant Stale-While-Revalidate loading: check if full order is cached
+  const initialCache = typeof window !== "undefined" ? getCachedData<any>(cacheKey) : null;
+
+  // Fallback to order summaries from dashboard or orders queue if full detail is not yet in cache
+  const fallbackSummary =
+    !initialCache && typeof window !== "undefined"
+      ? (() => {
+          const dashOrders = getCachedData<any[]>("admin_dashboard_orders");
+          const foundDash = dashOrders?.find((o) => o.id === orderId);
+          if (foundDash) return foundDash;
+          const allOrders = getCachedData<any[]>("admin_orders_all_oldest");
+          return allOrders?.find((o) => o.id === orderId) || null;
+        })()
+      : null;
+
+  const [order, setOrder] = useState<any>(initialCache?.order || fallbackSummary || null);
+  const [files, setFiles] = useState<any[]>(initialCache?.files || []);
+  const [notes, setNotes] = useState<any[]>(initialCache?.notes || []);
+  const [loading, setLoading] = useState(!initialCache && !fallbackSummary);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<any>(null);
+  const [previewingFileId, setPreviewingFileId] = useState<string | null>(null);
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [printingFileId, setPrintingFileId] = useState<string | null>(null);
   const [deletingOrder, setDeletingOrder] = useState(false);
@@ -71,23 +93,23 @@ export default function OrderDetailPage() {
   const [completedSuccess, setCompletedSuccess] = useState(false);
 
   // Editable settings
-  const [editStatus, setEditStatus] = useState("");
-  const [editColor, setEditColor] = useState("");
-  const [editPaper, setEditPaper] = useState("");
-  const [editCopies, setEditCopies] = useState(1);
-  const [editSides, setEditSides] = useState("");
-  const [editPriority, setEditPriority] = useState("");
+  const [editStatus, setEditStatus] = useState(initialCache?.order?.status || fallbackSummary?.status || "");
+  const [editColor, setEditColor] = useState(initialCache?.order?.colorMode || fallbackSummary?.colorMode || "");
+  const [editPaper, setEditPaper] = useState(initialCache?.order?.paperSize || fallbackSummary?.paperSize || "");
+  const [editCopies, setEditCopies] = useState(initialCache?.order?.copies || fallbackSummary?.copies || 1);
+  const [editSides, setEditSides] = useState(initialCache?.order?.sides || fallbackSummary?.sides || "");
+  const [editPriority, setEditPriority] = useState(initialCache?.order?.priority || fallbackSummary?.priority || "");
 
   const fetchOrder = async (isBackground = false, retries = 3): Promise<void> => {
     try {
-      const res = await fetch(`/api/admin/orders/${id}`);
+      const res = await fetch(`/api/admin/orders/${orderId}`);
       if (!res.ok) {
         if (retries > 0 && res.status === 404) {
-          // Retry after 400ms for newly created orders still committing
-          await new Promise((r) => setTimeout(r, 400));
+          // Retry after 300ms for newly created orders still committing
+          await new Promise((r) => setTimeout(r, 300));
           return fetchOrder(isBackground, retries - 1);
         }
-        if (!isBackground) {
+        if (!isBackground && !order) {
           setError("Order not found.");
           setLoading(false);
         }
@@ -97,6 +119,8 @@ export default function OrderDetailPage() {
       setOrder(data.order);
       setFiles(data.files || []);
       setNotes(data.notes || []);
+      setCachedData(cacheKey, data);
+
       if (!isBackground) {
         setEditStatus(data.order.status);
         setEditColor(data.order.colorMode);
@@ -107,12 +131,32 @@ export default function OrderDetailPage() {
         setLoading(false);
       }
     } catch {
-      if (!isBackground) {
+      if (!isBackground && !order) {
         setError("Failed to load order.");
         setLoading(false);
       }
     }
   };
+
+  // Pre-warm file blobs in the background so Print, Preview, and Download trigger instantaneously
+  useEffect(() => {
+    if (!files || files.length === 0) return;
+    files.forEach((file) => {
+      if (file.id && file.url && !fileBlobCache.has(file.id)) {
+        fetch(file.url)
+          .then((r) => (r.ok ? r.blob() : null))
+          .then((blob) => {
+            if (blob) {
+              fileBlobCache.set(file.id, {
+                blob,
+                url: URL.createObjectURL(blob),
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    });
+  }, [files]);
 
   useEffect(() => {
     fetchOrder();
@@ -181,24 +225,57 @@ export default function OrderDetailPage() {
   };
 
   const openPreview = async (file: any) => {
-    const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=url`);
-    if (res.ok) {
-      const { url } = await res.json();
-      setPreviewUrl(url);
+    // 1. Instant 0ms preview if URL is already attached
+    if (file.url) {
+      setPreviewUrl(file.url);
       setPreviewFile(file);
+      return;
+    }
+    // 2. Instant preview if blob is pre-warmed in memory
+    const cached = fileBlobCache.get(file.id);
+    if (cached) {
+      setPreviewUrl(cached.url);
+      setPreviewFile(file);
+      return;
+    }
+
+    setPreviewingFileId(file.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/files/${file.id}?action=url`);
+      if (res.ok) {
+        const { url } = await res.json();
+        setPreviewUrl(url);
+        setPreviewFile(file);
+      }
+    } finally {
+      setPreviewingFileId(null);
     }
   };
 
-  const downloadFile = async (file: any) => {
-    const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=download`);
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+  const downloadFile = (file: any) => {
+    setDownloadingFileId(file.id);
+
+    // If already pre-warmed in memory, trigger immediate 0ms download
+    const cached = fileBlobCache.get(file.id);
+    if (cached) {
       const a = document.createElement("a");
-      a.href = url;
+      a.href = cached.url;
       a.download = file.originalName;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
+      setTimeout(() => setDownloadingFileId(null), 300);
+      return;
     }
+
+    // Direct browser native streaming download without buffering entire file in JS memory
+    const a = document.createElement("a");
+    a.href = `/api/admin/orders/${orderId}/files/${file.id}?action=download`;
+    a.download = file.originalName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => setDownloadingFileId(null), 600);
   };
 
   const printFile = async (file: any) => {
@@ -208,21 +285,54 @@ export default function OrderDetailPage() {
         file.mimeType === "application/pdf" ||
         file.originalName.toLowerCase().endsWith(".pdf");
 
-      const res = await fetch(`/api/admin/orders/${id}/files/${file.id}?action=download`);
+      // 1. If in-memory pre-warmed blob exists, print immediately (0ms network delay)
+      const cached = fileBlobCache.get(file.id);
+      if (cached) {
+        if (isPdf) {
+          await printPdf(cached.blob);
+        } else {
+          await printImage(cached.url, {
+            paperSize: editPaper || order?.paperSize || "A4",
+            colorMode: editColor || order?.colorMode || "bw",
+            copies: editCopies || order?.copies || 1,
+          });
+        }
+        setPrintingFileId(null);
+        return;
+      }
+
+      // 2. If direct URL exists, print directly without waiting for duplicate download
+      if (file.url) {
+        if (isPdf) {
+          await printPdf(file.url);
+        } else {
+          await printImage(file.url, {
+            paperSize: editPaper || order?.paperSize || "A4",
+            colorMode: editColor || order?.colorMode || "bw",
+            copies: editCopies || order?.copies || 1,
+          });
+        }
+        setPrintingFileId(null);
+        return;
+      }
+
+      // 3. Fallback: fetch blob
+      const res = await fetch(`/api/admin/orders/${orderId}/files/${file.id}?action=download`);
       if (!res.ok) throw new Error("Failed to load file for printing");
       const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      fileBlobCache.set(file.id, { blob, url: blobUrl });
 
       if (isPdf) {
         await printPdf(blob);
       } else {
-        const imageUrl = URL.createObjectURL(blob);
-        await printImage(imageUrl, {
+        await printImage(blobUrl, {
           paperSize: editPaper || order?.paperSize || "A4",
           colorMode: editColor || order?.colorMode || "bw",
           copies: editCopies || order?.copies || 1,
         });
       }
-      setTimeout(() => setPrintingFileId(null), 1200);
+      setPrintingFileId(null);
     } catch (err) {
       console.error("Print execution error:", err);
       alert("Failed to initiate direct print. Try Preview instead.");
@@ -233,13 +343,43 @@ export default function OrderDetailPage() {
   const deleteSingleFile = async (file: any) => {
     if (!confirm(`Delete unwanted file "${file.originalName}" from this order?`)) return;
     setDeletingFileId(file.id);
-    const res = await fetch(`/api/admin/orders/${id}/files/${file.id}`, {
-      method: "DELETE",
-    });
-    if (res.ok) {
-      fetchOrder();
+
+    // OPTIMISTIC REMOVAL: Remove file immediately so UI does not wait (0ms)
+    const prevFiles = files;
+    const remaining = files.filter((f) => f.id !== file.id);
+    setFiles(remaining);
+
+    // Optimistically update order counts
+    const prevOrder = order;
+    const updatedOrder = prevOrder
+      ? {
+          ...prevOrder,
+          totalFiles: Math.max(0, (prevOrder.totalFiles || 1) - 1),
+          totalPages: Math.max(0, (prevOrder.totalPages || 1) - (file.pageCount || 1)),
+        }
+      : prevOrder;
+    setOrder(updatedOrder);
+
+    // Update client cache immediately
+    setCachedData(cacheKey, { order: updatedOrder, files: remaining, notes });
+
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/files/${file.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        // Rollback on failure
+        setFiles(prevFiles);
+        setOrder(prevOrder);
+        alert("Failed to delete file. Please try again.");
+      }
+    } catch {
+      setFiles(prevFiles);
+      setOrder(prevOrder);
+      alert("Failed to delete file.");
+    } finally {
+      setDeletingFileId(null);
     }
-    setDeletingFileId(null);
   };
 
   const completeOrder = async () => {
@@ -444,17 +584,27 @@ export default function OrderDetailPage() {
                         </button>
                         <button
                           onClick={() => openPreview(file)}
-                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
+                          disabled={previewingFileId === file.id}
+                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer disabled:opacity-50"
                           title="Preview File"
                         >
-                          <Eye className="w-4 h-4" />
+                          {previewingFileId === file.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           onClick={() => downloadFile(file)}
-                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
+                          disabled={downloadingFileId === file.id}
+                          className="p-2 rounded-lg text-gray-400 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-neutral-900 transition-colors cursor-pointer disabled:opacity-50"
                           title="Download File"
                         >
-                          <Download className="w-4 h-4" />
+                          {downloadingFileId === file.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
                         </button>
                         <button
                           onClick={() => deleteSingleFile(file)}

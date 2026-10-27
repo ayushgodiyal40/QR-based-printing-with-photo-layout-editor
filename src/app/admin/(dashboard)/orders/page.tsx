@@ -57,6 +57,19 @@ export default function OrdersPage() {
     }
   };
 
+  const prefetchOrder = (orderId: string) => {
+    const key = `admin_order_${orderId}`;
+    if (getCachedData(key)) return;
+    fetch(`/api/admin/orders/${orderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.order) {
+          setCachedData(key, data);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => {
@@ -181,6 +194,7 @@ export default function OrdersPage() {
                     <tr
                       key={order.id}
                       onClick={() => router.push(`/admin/orders/${order.id}`)}
+                      onMouseEnter={() => prefetchOrder(order.id)}
                       className="hover:bg-indigo-50/60 dark:hover:bg-neutral-900/60 transition-colors cursor-pointer group"
                     >
                       <td className="px-5 py-3">
@@ -265,6 +279,7 @@ export default function OrdersPage() {
                 <div
                   key={order.id}
                   onClick={() => router.push(`/admin/orders/${order.id}`)}
+                  onMouseEnter={() => prefetchOrder(order.id)}
                   className="flex items-center gap-3 px-4 py-4 hover:bg-indigo-50/60 dark:hover:bg-neutral-900/60 active:bg-indigo-100/50 cursor-pointer"
                 >
                   <div className="w-12 h-12 bg-indigo-100/70 dark:bg-neutral-900 rounded-xl flex items-center justify-center flex-shrink-0 border border-transparent dark:border-neutral-800">

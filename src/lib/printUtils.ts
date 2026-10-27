@@ -155,7 +155,7 @@ export function printImage(imageUrl: string, options?: PrintOptions): Promise<vo
               iframe.remove();
             }, 60000);
           }
-        }, 300);
+        }, 50);
       };
 
       if (img.complete && img.naturalWidth > 0) {
@@ -174,12 +174,13 @@ export function printImage(imageUrl: string, options?: PrintOptions): Promise<vo
 }
 
 /**
- * Print a PDF document directly through a clean iframe.
+ * Print a PDF document directly through a clean iframe. Accepts either a Blob or direct URL.
  */
-export function printPdf(pdfBlob: Blob): Promise<void> {
+export function printPdf(pdfSource: Blob | string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const isBlob = pdfSource instanceof Blob;
+      const pdfUrl = isBlob ? URL.createObjectURL(pdfSource) : pdfSource;
 
       const existingIframe = document.getElementById("clean-pdf-print-frame");
       if (existingIframe) {
@@ -213,10 +214,10 @@ export function printPdf(pdfBlob: Blob): Promise<void> {
           } finally {
             setTimeout(() => {
               iframe.remove();
-              URL.revokeObjectURL(pdfUrl);
+              if (isBlob) URL.revokeObjectURL(pdfUrl);
             }, 60000);
           }
-        }, 400);
+        }, 80);
       };
     } catch (err) {
       reject(err);

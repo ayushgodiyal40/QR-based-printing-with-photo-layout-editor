@@ -118,6 +118,26 @@ export default function DashboardPage() {
     }
   };
 
+  const prefetchOrder = (orderId: string) => {
+    const key = `admin_order_${orderId}`;
+    if (getCachedData(key)) return;
+    fetch(`/api/admin/orders/${orderId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.order) {
+          setCachedData(key, data);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (orders && orders.length > 0) {
+      // Pre-warm top 5 orders in the Live Queue so clicking opens instantaneously
+      orders.slice(0, 5).forEach((o) => prefetchOrder(o.id));
+    }
+  }, [orders]);
+
   const playNotification = () => {
     if (!notifSound) return;
     try {
@@ -289,6 +309,7 @@ export default function DashboardPage() {
               <Link
                 key={order.id}
                 href={`/admin/orders/${order.id}`}
+                onMouseEnter={() => prefetchOrder(order.id)}
                 className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-neutral-900/60 transition-colors group ${
                   newOrderIds.has(order.id) ? "bg-indigo-50 dark:bg-neutral-900/80 animate-pulse" : ""
                 }`}

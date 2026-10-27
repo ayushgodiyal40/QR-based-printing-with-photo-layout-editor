@@ -8,6 +8,8 @@ import { notifyShop, notifyOrder } from "@/lib/sse";
 import { calculatePrice } from "@/lib/pricing";
 import { z } from "zod";
 
+import { generateSignedToken } from "@/lib/signed-url";
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,47 +20,58 @@ export async function GET(
   const shopId = (session.user as any).shopId as string;
   const { id } = await params;
 
-  const orderRows = await db
-    .select()
-    .from(orders)
-    .where(and(eq(orders.id, id), eq(orders.shopId, shopId), eq(orders.isDeleted, false)))
-    .limit(1);
+  // Run all database reads in parallel to minimize latency on serverless database
+  const [orderRows, files, notes] = await Promise.all([
+    db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, id), eq(orders.shopId, shopId), eq(orders.isDeleted, false)))
+      .limit(1),
+    db
+      .select({
+        id: orderFiles.id,
+        orderId: orderFiles.orderId,
+        originalName: orderFiles.originalName,
+        storedName: orderFiles.storedName,
+        mimeType: orderFiles.mimeType,
+        sizeBytes: orderFiles.sizeBytes,
+        pageCount: orderFiles.pageCount,
+        imageWidth: orderFiles.imageWidth,
+        imageHeight: orderFiles.imageHeight,
+        storagePath: orderFiles.storagePath,
+        uploadStatus: orderFiles.uploadStatus,
+        isDeleted: orderFiles.isDeleted,
+        deletedAt: orderFiles.deletedAt,
+        createdAt: orderFiles.createdAt,
+      })
+      .from(orderFiles)
+      .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false))),
+    db
+      .select()
+      .from(orderNotes)
+      .where(eq(orderNotes.orderId, id)),
+  ]);
 
   if (!orderRows.length) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
-  const files = await db
-    .select({
-      id: orderFiles.id,
-      orderId: orderFiles.orderId,
-      originalName: orderFiles.originalName,
-      storedName: orderFiles.storedName,
-      mimeType: orderFiles.mimeType,
-      sizeBytes: orderFiles.sizeBytes,
-      pageCount: orderFiles.pageCount,
-      imageWidth: orderFiles.imageWidth,
-      imageHeight: orderFiles.imageHeight,
-      storagePath: orderFiles.storagePath,
-      uploadStatus: orderFiles.uploadStatus,
-      isDeleted: orderFiles.isDeleted,
-      deletedAt: orderFiles.deletedAt,
-      createdAt: orderFiles.createdAt,
-    })
-    .from(orderFiles)
-    .where(and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false)));
-
-  const notes = await db
-    .select()
-    .from(orderNotes)
-    .where(eq(orderNotes.orderId, id));
-
-  await audit({
+  // Non-blocking background audit logging
+  audit({
     shopId,
     orderId: id,
     userId: session.user.id,
     action: "order.viewed",
+  }).catch(() => {});
+
+  // Pre-generate signed URLs so preview, print, and download can access files with zero latency
+  const filesWithUrls = files.map((file) => {
+    const token = generateSignedToken(file.id, id);
+    return {
+      ...file,
+      url: `/api/files/serve?token=${token}`,
+    };
   });
 
-  return NextResponse.json({ order: orderRows[0], files, notes });
+  return NextResponse.json({ order: orderRows[0], files: filesWithUrls, notes });
 }
 
 const UpdateOrderSchema = z.object({
