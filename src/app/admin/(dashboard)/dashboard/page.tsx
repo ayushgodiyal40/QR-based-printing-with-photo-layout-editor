@@ -12,6 +12,13 @@ import {
   Bell,
   BellOff,
   RefreshCw,
+  QrCode,
+  X,
+  Copy,
+  Check,
+  Download,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -85,6 +92,7 @@ import { getCachedData, setCachedData } from "@/lib/client-cache";
 
 const CACHE_KEY_STATS = "admin_dashboard_stats";
 const CACHE_KEY_ORDERS = "admin_dashboard_orders";
+const CACHE_KEY_QR = "admin_settings_qr";
 
 export default function DashboardPage() {
   const cachedStats = getCachedData<DashboardStats>(CACHE_KEY_STATS);
@@ -96,6 +104,69 @@ export default function DashboardPage() {
   const [notifSound, setNotifSound] = useState(true);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const esRef = useRef<EventSource | null>(null);
+
+  // Shop QR code modal state
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState<{ uploadUrl: string; qrDataUrl: string; shop?: any } | null>(
+    () => getCachedData<any>(CACHE_KEY_QR) || null
+  );
+  const [loadingQr, setLoadingQr] = useState(false);
+  const [copiedQr, setCopiedQr] = useState(false);
+
+  const fetchQr = async () => {
+    if (qrData?.qrDataUrl) return;
+    setLoadingQr(true);
+    try {
+      const res = await fetch("/api/admin/qr");
+      if (res.ok) {
+        const data = await res.json();
+        setQrData(data);
+        setCachedData(CACHE_KEY_QR, data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch shop QR:", err);
+    } finally {
+      setLoadingQr(false);
+    }
+  };
+
+  const handleOpenQr = () => {
+    setShowQrModal(true);
+    if (!qrData) {
+      fetchQr();
+    }
+  };
+
+  const copyQrUrl = () => {
+    if (!qrData?.uploadUrl) return;
+    navigator.clipboard.writeText(qrData.uploadUrl);
+    setCopiedQr(true);
+    setTimeout(() => setCopiedQr(false), 2000);
+  };
+
+  const downloadQr = () => {
+    if (!qrData?.qrDataUrl) return;
+    const a = document.createElement("a");
+    a.href = qrData.qrDataUrl;
+    const shopName = qrData.shop?.slug || "shop";
+    a.download = `${shopName}-qr.png`;
+    a.click();
+  };
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowQrModal(false);
+      }
+    };
+    if (showQrModal) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showQrModal]);
 
   const fetchData = async () => {
     try {
@@ -233,6 +304,14 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={handleOpenQr}
+            title="Display Shop QR Code"
+            aria-label="Display Shop QR Code"
+            className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-white hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-colors shadow-sm cursor-pointer"
+          >
+            <QrCode className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setNotifSound(!notifSound)}
             title={notifSound ? "Mute notifications" : "Unmute notifications"}
             className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
@@ -360,6 +439,108 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Maximized Shop QR Modal */}
+      {showQrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-neutral-950 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-gray-200 dark:border-neutral-800 shadow-2xl relative flex flex-col items-center text-center animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-neutral-900 transition-colors cursor-pointer"
+              title="Close (Esc)"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header info */}
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 shadow-inner">
+              <QrCode className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-xl font-black text-gray-900 dark:text-white">
+              {qrData?.shop?.name ? qrData.shop.name : "Shop QR Code"}
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-neutral-400 mt-1 max-w-xs">
+              Scan with mobile camera to send documents directly
+            </p>
+
+            {/* Maximized QR Code Container */}
+            <div className="mt-5 p-4 sm:p-5 bg-white rounded-3xl border-4 border-indigo-100 dark:border-neutral-800 shadow-lg flex items-center justify-center min-h-[260px] sm:min-h-[290px]">
+              {loadingQr ? (
+                <div className="flex flex-col items-center justify-center gap-2 p-12 text-gray-400">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+                  <span className="text-xs font-medium">Generating QR...</span>
+                </div>
+              ) : qrData?.qrDataUrl ? (
+                <img
+                  src={qrData.qrDataUrl}
+                  alt="Shop QR Code"
+                  className="w-60 h-60 sm:w-68 sm:h-68 object-contain rounded-xl select-none"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 p-10 text-gray-400">
+                  <p className="text-sm">Unable to load QR code.</p>
+                  <button
+                    onClick={fetchQr}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Customer Upload Link & Actions */}
+            {qrData?.uploadUrl && (
+              <div className="w-full mt-5 space-y-3">
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-neutral-900/80 rounded-xl px-3 py-2.5 border border-gray-200 dark:border-neutral-800 text-left">
+                  <code className="text-xs text-indigo-600 dark:text-indigo-400 flex-1 truncate font-mono">
+                    {qrData.uploadUrl}
+                  </code>
+                  <button
+                    onClick={copyQrUrl}
+                    className="p-1 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                    title="Copy URL"
+                  >
+                    {copiedQr ? (
+                      <Check className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={downloadQr}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold transition-colors cursor-pointer shadow-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PNG
+                  </button>
+                  <a
+                    href={qrData.uploadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-700 dark:text-neutral-200 text-xs sm:text-sm font-semibold hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors shadow-sm"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open Page
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
