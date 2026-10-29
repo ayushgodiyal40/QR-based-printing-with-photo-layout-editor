@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       scaling: data.scaling,
       idempotencyKey: data.idempotencyKey,
       expiresAt,
-      status: "received",
+      status: "uploading",
     })
     .returning();
 
@@ -109,19 +109,6 @@ export async function POST(req: NextRequest) {
     action: "order.created",
     ipAddress: ip,
     details: { customerName: data.customerName, token },
-  });
-
-  // Notify admin dashboard via SSE
-  notifyShop(data.shopId, {
-    event: "new_order",
-    data: {
-      orderId: newOrder.id,
-      token,
-      orderNumber,
-      customerName: data.customerName || "Walk-in",
-      status: "received",
-      createdAt: newOrder.createdAt,
-    },
   });
 
   return NextResponse.json({

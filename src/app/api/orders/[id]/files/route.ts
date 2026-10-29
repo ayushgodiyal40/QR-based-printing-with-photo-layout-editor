@@ -7,7 +7,7 @@ import { getPdfPageCount, getImageDimensions, isAllowedFile } from "@/lib/file-p
 import { calculatePrice } from "@/lib/pricing";
 import { uploadLimiter, getIp } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
-import { notifyShop } from "@/lib/sse";
+import { notifyShop, notifyOrder } from "@/lib/sse";
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || "50") * 1024 * 1024;
 
@@ -30,6 +30,11 @@ export async function POST(
       shopId: orders.shopId,
       status: orders.status,
       expiresAt: orders.expiresAt,
+      token: orders.token,
+      orderNumber: orders.orderNumber,
+      customerName: orders.customerName,
+      priority: orders.priority,
+      createdAt: orders.createdAt,
       colorMode: orders.colorMode,
       paperSize: orders.paperSize,
       copies: orders.copies,
@@ -147,9 +152,26 @@ export async function POST(
 
   const estimatedPriceStr = price.toString();
 
+  // Check if client indicated this was the last file, or totalFiles reaches expected
+  const isLastFile = formData.get("isLastFile") === "true";
+  const expectedTotalStr = formData.get("totalExpectedFiles") as string | null;
+  const expectedTotal = expectedTotalStr ? parseInt(expectedTotalStr) : 0;
+
+  const shouldMarkReady =
+    order.status === "uploading" &&
+    (isLastFile || (expectedTotal > 0 && totalFiles >= expectedTotal));
+
+  const targetStatus = shouldMarkReady ? "received" : order.status;
+
   await db
     .update(orders)
-    .set({ totalFiles, totalPages, estimatedPrice: estimatedPriceStr, updatedAt: new Date() })
+    .set({
+      totalFiles,
+      totalPages,
+      estimatedPrice: estimatedPriceStr,
+      status: targetStatus,
+      updatedAt: new Date(),
+    })
     .where(eq(orders.id, orderId));
 
   await audit({
@@ -160,11 +182,44 @@ export async function POST(
     details: { fileName: file.name, sizeBytes: file.size, pageCount },
   });
 
-  // Notify dashboard of file upload & price update
-  notifyShop(order.shopId, {
-    event: "order_updated",
-    data: { orderId, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
-  });
+  if (shouldMarkReady) {
+    // Notify admin dashboard live queue now that all files are ready
+    notifyShop(order.shopId, {
+      event: "new_order",
+      data: {
+        id: order.id,
+        orderId: order.id,
+        token: order.token,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName || "Walk-in",
+        status: "received",
+        priority: order.priority,
+        colorMode: order.colorMode,
+        paperSize: order.paperSize,
+        copies: order.copies,
+        sides: order.sides,
+        totalFiles,
+        totalPages,
+        estimatedPrice: estimatedPriceStr,
+        createdAt: order.createdAt,
+      },
+    });
+    notifyOrder(orderId, {
+      event: "status_update",
+      data: {
+        status: "received",
+        totalFiles,
+        totalPages,
+        estimatedPrice: estimatedPriceStr,
+      },
+    });
+  } else if (order.status !== "uploading") {
+    // If order was already active (e.g. customer added more files after order was placed)
+    notifyShop(order.shopId, {
+      event: "order_updated",
+      data: { orderId, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
+    });
+  }
 
   return NextResponse.json({
     fileId: savedFile.id,

@@ -98,17 +98,17 @@ function LoginForm() {
       <button
         type="submit"
         disabled={loading || success}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-80 flex items-center justify-center gap-2 shadow-lg mt-2 cursor-pointer"
+        className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition-all disabled:opacity-80 flex items-center justify-center gap-2 shadow-sm mt-2 cursor-pointer"
       >
         {success ? (
           <>
             <CheckCircle2 className="w-4 h-4 text-emerald-300 animate-pulse" />
-            Redirecting to dashboard…
+            Redirecting to dashboard...
           </>
         ) : loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Signing in…
+            Signing in...
           </>
         ) : (
           "Sign In"
@@ -124,7 +124,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
+          <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
             <Printer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PrintShop Admin</h1>

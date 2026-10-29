@@ -234,8 +234,11 @@ export default function DashboardPage() {
 
     es.addEventListener("new_order", (e) => {
       const order = JSON.parse(e.data);
-      setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id)]);
-      setNewOrderIds((prev) => new Set([...prev, order.id]));
+      const targetId = order.id || order.orderId;
+      const normalizedOrder = { ...order, id: targetId };
+      prefetchOrder(targetId);
+      setOrders((prev) => [normalizedOrder, ...prev.filter((o) => o.id !== targetId)]);
+      setNewOrderIds((prev) => new Set([...prev, targetId]));
       playNotification();
     });
 
@@ -394,7 +397,7 @@ export default function DashboardPage() {
                 }`}
               >
                 {/* Token */}
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-neutral-900 dark:to-neutral-900 rounded-xl flex items-center justify-center flex-shrink-0 border border-indigo-200/50 dark:border-neutral-800">
+                <div className="w-12 h-12 bg-slate-100 dark:bg-neutral-900 rounded-xl flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-neutral-800">
                   <span className="text-sm font-black text-indigo-700 dark:text-indigo-300">{order.token}</span>
                 </div>
 

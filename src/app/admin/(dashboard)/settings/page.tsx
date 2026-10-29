@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Download, Copy, ExternalLink, Save } from "lucide-react";
+import { Loader2, Download, Copy, ExternalLink, Save, Database, AlertTriangle, Trash2 } from "lucide-react";
 import { getCachedData, setCachedData } from "@/lib/client-cache";
 
 const CACHE_KEY_SETTINGS = "admin_settings_shop";
@@ -209,7 +209,7 @@ export default function SettingsPage() {
         <div className="bg-white dark:bg-neutral-950 rounded-2xl p-6 border border-gray-100 dark:border-neutral-900 shadow-sm space-y-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <span>🧹</span> Database & Network Bandwidth Optimization
+              <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Database & Network Bandwidth Optimization
             </h2>
             <p className="text-xs text-gray-500 dark:text-neutral-400 mt-1">
               Purge heavy raw base64 file payloads from completed and deleted orders to reclaim Neon database storage and prevent transfer quota alerts.
@@ -217,7 +217,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="p-4 bg-amber-50/60 dark:bg-amber-950/20 rounded-xl border border-amber-200/60 dark:border-amber-900/40 flex items-start gap-3">
-            <span className="text-amber-600 text-base mt-0.5">⚡</span>
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <div className="text-xs text-amber-900 dark:text-amber-200">
               <p className="font-semibold mb-0.5">Zero Data Loss for Reporting:</p>
               <p className="text-amber-800 dark:text-amber-300">
@@ -243,7 +243,7 @@ export default function SettingsPage() {
             }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 text-gray-700 dark:text-neutral-200 text-xs font-semibold cursor-pointer transition-all shadow-sm"
           >
-            <span>🗑️</span> Clean Database & Free Up Quota
+            <Trash2 className="w-3.5 h-3.5 text-neutral-500" /> Clean Database & Free Up Quota
           </button>
         </div>
       </div>

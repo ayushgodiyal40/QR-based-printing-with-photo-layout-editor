@@ -27,12 +27,12 @@ export default function SetupPage() {
         body: JSON.stringify({ shopName, adminName, adminEmail, adminPassword }),
       });
     } catch {
-      setError("Network error — could not reach the server. Is the dev server running?");
+      setError("Network error: could not reach the server. Is the dev server running?");
       setLoading(false);
       return;
     }
 
-    // Safely parse JSON — server might return HTML on crash
+    // Safely parse JSON - server might return HTML on crash
     let data: any;
     try {
       const text = await res.text();
@@ -68,7 +68,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
+          <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
             <Printer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PrintShop Setup</h1>
@@ -171,12 +171,12 @@ export default function SetupPage() {
             <button
               onClick={handleSetup}
               disabled={loading || !shopName || !adminEmail || !adminPassword || adminPassword.length < 8}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg cursor-pointer mt-2"
+              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition-all disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm cursor-pointer mt-2"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Setting up…
+                  Setting up...
                 </>
               ) : (
                 "Create Shop & Admin Account →"

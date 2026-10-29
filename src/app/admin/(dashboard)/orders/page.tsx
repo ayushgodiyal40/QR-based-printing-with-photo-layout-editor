@@ -232,7 +232,7 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-5 py-3">
                         <p className="text-sm font-bold text-gray-800 dark:text-neutral-200">
-                          {order.estimatedPrice ? `₹${order.estimatedPrice}` : "—"}
+                          {order.estimatedPrice ? `₹${order.estimatedPrice}` : "-"}
                         </p>
                         <span
                           className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded ${

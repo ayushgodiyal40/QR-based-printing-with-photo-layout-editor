@@ -820,10 +820,10 @@ export default function OrderDetailPage() {
             <button
               onClick={saveChanges}
               disabled={saving}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60 flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              {saving ? "Saving…" : "Save Changes"}
+              {saving ? "Saving..." : "Save Changes"}
             </button>
 
             {/* Complete Order Primary Action */}

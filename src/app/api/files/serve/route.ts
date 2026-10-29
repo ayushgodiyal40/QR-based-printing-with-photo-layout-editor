@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { readFile, fileExists } from "@/lib/storage";
 
 /**
- * Public file serve endpoint — requires valid signed token.
+ * Public file serve endpoint: requires valid signed token.
  * Used for previewing files in both admin and customer-facing screens.
  */
 export async function GET(req: NextRequest) {

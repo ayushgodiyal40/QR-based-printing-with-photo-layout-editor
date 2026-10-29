@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import {
   CheckCircle,
   Clock,
@@ -15,6 +16,9 @@ import {
   Loader2,
   Eye,
   X,
+  Store,
+  Banknote,
+  QrCode,
 } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 
@@ -72,7 +76,7 @@ const STATUS_CONFIG: Record<
     icon: <RefreshCw className="w-6 h-6 animate-spin" />,
     color: "text-blue-600",
     bg: "bg-blue-50",
-    description: "Your files are being uploaded…",
+    description: "Your files are being uploaded...",
   },
   received: {
     label: "Received ✓",
@@ -226,10 +230,10 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-indigo-500 mx-auto mb-3" />
-          <p className="text-gray-500">Loading order…</p>
+          <RefreshCw className="w-8 h-8 animate-spin text-slate-700 mx-auto mb-3" />
+          <p className="text-gray-500">Loading order...</p>
         </div>
       </div>
     );
@@ -237,9 +241,9 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-6">
-        <div className="glass-card rounded-3xl p-8 text-center max-w-sm">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center max-w-sm shadow-sm">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-lg font-bold text-gray-800 mb-2">Order not found</h2>
           <p className="text-gray-500 text-sm">{error || "This order does not exist."}</p>
         </div>
@@ -252,21 +256,21 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
   const isTerminal = ["cancelled", "failed", "expired"].includes(order.status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-sm mx-auto px-4 py-8">
         {/* Token display */}
-        <div className="glass-card rounded-3xl p-6 mb-5 animate-fade-in text-center shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 mb-5 animate-fade-in text-center shadow-sm">
           <p className="text-sm text-gray-500 mb-1">Your Token</p>
-          <p className="text-6xl font-black text-indigo-700 tracking-wider">{order.token}</p>
+          <p className="text-6xl font-black text-slate-900 tracking-wider">{order.token}</p>
           <p className="text-xs text-gray-400 mt-1">{order.orderNumber}</p>
         </div>
 
         {/* Price Card (Calculating Animation or Finalized Price) */}
         {!order.estimatedPrice || uploadingMore ? (
-          <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200/80 rounded-3xl p-5 mb-5 text-center shadow-sm animate-pulse">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 mb-5 text-center shadow-xs animate-pulse">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
-              <p className="text-xs text-indigo-950 font-bold uppercase tracking-wide">
+              <p className="text-xs text-slate-900 font-bold uppercase tracking-wide">
                 Calculating Total Bill...
               </p>
             </div>
@@ -286,8 +290,8 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
 
         {/* Counter Payment Card */}
         <div className="bg-white/90 border border-indigo-100 rounded-3xl p-5 mb-5 shadow-sm text-center space-y-2 animate-fade-in">
-          <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto font-bold text-lg">
-            🏪
+          <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+            <Store className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
             <p className="text-xs font-bold text-gray-800">Pay at Shop Counter</p>
@@ -295,10 +299,10 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
               Show your token <strong className="text-indigo-700 font-black">#{order.token}</strong> to the operator at the counter to collect your prints.
             </p>
           </div>
-          <div className="pt-2 border-t border-gray-100 flex items-center justify-center gap-3 text-xs text-gray-600 font-medium">
-            <span>💵 Cash</span>
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-center gap-4 text-xs text-gray-600 font-medium">
+            <span className="flex items-center gap-1.5"><Banknote className="w-3.5 h-3.5 text-gray-500" /> Cash</span>
             <span>•</span>
-            <span>📱 Counter QR / UPI</span>
+            <span className="flex items-center gap-1.5"><QrCode className="w-3.5 h-3.5 text-gray-500" /> Counter QR / UPI</span>
           </div>
         </div>
 
@@ -311,7 +315,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
           <p className="text-gray-700 text-sm">{statusConfig.description}</p>
           {order.status === "completed" && (
             <div className="mt-4 bg-white rounded-2xl p-4 border-2 border-green-200">
-              <p className="text-green-700 font-bold text-lg">🎉 Your order is ready!</p>
+              <p className="text-green-700 font-bold text-lg">Your order is ready</p>
               <p className="text-green-600 text-sm mt-1">Please collect from the counter.</p>
             </div>
           )}
@@ -381,7 +385,7 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingMore}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-sm hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-60"
+              className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-60"
             >
               {uploadingMore ? (
                 <>
@@ -489,6 +493,16 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
         <p className="text-center text-xs text-gray-400">
           Status updates automatically in real time.
         </p>
+
+        <div className="pt-6 pb-2 text-center text-xs text-slate-500 flex items-center justify-center gap-3">
+          <Link href="/privacy" className="hover:text-slate-800 transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-slate-800 transition-colors">
+            Terms & Conditions
+          </Link>
+        </div>
 
         {/* Client-Side File Preview Modal */}
         {previewTarget && (

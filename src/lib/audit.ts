@@ -3,6 +3,7 @@ import { auditLogs } from "./db/schema";
 
 export type AuditAction =
   | "order.created"
+  | "order.ready"
   | "order.viewed"
   | "order.status_changed"
   | "order.settings_changed"
@@ -40,7 +41,7 @@ export async function audit(params: {
       ipAddress: params.ipAddress,
     });
   } catch {
-    // Non-critical — don't break the main flow if audit fails
+    // Non-critical - don't break the main flow if audit fails
     console.error("Audit log failed:", params.action);
   }
 }

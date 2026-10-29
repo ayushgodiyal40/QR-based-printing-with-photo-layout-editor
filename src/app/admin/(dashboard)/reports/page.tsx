@@ -158,7 +158,7 @@ export default function ReportsPage() {
                     <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{o.customerName || "Walk-in"}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">{o.totalPages}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-neutral-300">{o.colorMode === "bw" ? "B&W" : "Color"} · {o.paperSize}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{o.estimatedPrice ? `₹${o.estimatedPrice}` : "—"}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{o.estimatedPrice ? `₹${o.estimatedPrice}` : "-"}</td>
                     <td className="px-4 py-3 capitalize text-xs text-gray-700 dark:text-neutral-300">{o.status}</td>
                     <td className="px-4 py-3 text-gray-400 dark:text-neutral-500 text-xs">{new Date(o.createdAt).toLocaleDateString("en-IN")}</td>
                   </tr>

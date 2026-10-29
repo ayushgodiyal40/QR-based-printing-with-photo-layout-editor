@@ -35,17 +35,18 @@ export async function GET(_req: NextRequest) {
       )
     );
 
-  // Retain all historical metrics for today
-  const totalOrders = todayOrders.length;
-  const totalPages = todayOrders.reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
-  const totalRevenue = todayOrders.reduce(
+  // Retain metrics for today excluding incomplete uploading drafts
+  const readyTodayOrders = todayOrders.filter((o) => o.status !== "uploading");
+  const totalOrders = readyTodayOrders.length;
+  const totalPages = readyTodayOrders.reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
+  const totalRevenue = readyTodayOrders.reduce(
     (s: number, o: any) => s + parseFloat((o.estimatedPrice as string) || "0"),
     0
   );
-  const bwPages = todayOrders
+  const bwPages = readyTodayOrders
     .filter((o: any) => o.colorMode === "bw")
     .reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
-  const colorPages = todayOrders
+  const colorPages = readyTodayOrders
     .filter((o: any) => o.colorMode === "color")
     .reduce((s: number, o: any) => s + (o.totalPages || 0), 0);
 

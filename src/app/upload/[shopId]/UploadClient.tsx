@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Upload,
   FileText,
@@ -18,6 +19,9 @@ import {
   Zap,
   Eye,
   Sparkles,
+  Store,
+  Banknote,
+  QrCode,
 } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 
@@ -267,7 +271,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const uploadSingleFile = async (item: UploadedFile, targetOrderId: string): Promise<void> => {
+  const uploadSingleFile = async (
+    item: UploadedFile,
+    targetOrderId: string,
+    isLastFile = false,
+    totalExpectedFiles?: number
+  ): Promise<void> => {
     setFiles((prev) =>
       prev.map((f) => (f.id === item.id ? { ...f, status: "uploading", progress: 5 } : f))
     );
@@ -276,6 +285,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       const fileToUpload = await compressImageIfNeeded(item.file);
       const formData = new FormData();
       formData.append("file", fileToUpload);
+      if (isLastFile) {
+        formData.append("isLastFile", "true");
+      }
+      if (totalExpectedFiles) {
+        formData.append("totalExpectedFiles", String(totalExpectedFiles));
+      }
 
       const xhr = new XMLHttpRequest();
 
@@ -356,8 +371,9 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
     if (addedItems.length > 0) {
       setFiles((prev) => [...prev, ...addedItems]);
-      addedItems.forEach((item) => {
-        uploadSingleFile(item, orderId);
+      const totalNew = addedItems.length;
+      addedItems.forEach((item, idx) => {
+        uploadSingleFile(item, orderId, idx === totalNew - 1, files.length + totalNew);
       });
     }
   };
@@ -398,10 +414,23 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       // INSTANT UI TRANSITION to Token Screen
       setStep("submitted");
 
-      // Upload files in background
-      files.forEach((f) => {
-        uploadSingleFile(f, newOrderId);
-      });
+      // Upload files in background and notify live queue once all files are ready
+      const totalCount = files.length;
+      const uploadPromises = files.map((f, idx) =>
+        uploadSingleFile(f, newOrderId, idx === totalCount - 1, totalCount)
+      );
+
+      Promise.all(uploadPromises)
+        .then(async () => {
+          try {
+            await fetch(`/api/orders/${newOrderId}/ready`, { method: "POST" });
+          } catch (e) {
+            console.error("Failed to mark order ready:", e);
+          }
+        })
+        .catch((e) => {
+          console.error("Upload error:", e);
+        });
 
     } catch (err: any) {
       setSubmitError(err.message || "Something went wrong. Please try again.");
@@ -413,24 +442,24 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   // ─── FIRST PAGE WHERE TOKEN NUMBER IS VISIBLE ──────────────────────────────
   if (step === "submitted" && orderToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center p-4 pb-12">
-        <div className="w-full max-w-sm glass-card rounded-3xl p-6 text-center animate-fade-in shadow-2xl">
-          <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 pb-12">
+        <div className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl p-6 text-center animate-fade-in shadow-xl">
+          <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
             <CheckCircle className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Files Sent!</h1>
           <p className="text-gray-500 text-xs mb-5">Show your token number at the shop counter.</p>
 
           {/* Token Card */}
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-5 mb-4 text-white shadow-xl">
-            <p className="text-xs font-medium opacity-80 mb-1">Your Token Number</p>
+          <div className="bg-slate-900 rounded-2xl p-5 mb-4 text-white shadow-lg">
+            <p className="text-xs font-medium text-slate-400 mb-1">Your Token Number</p>
             <p className="text-6xl font-black tracking-wider mb-1">{orderToken}</p>
-            <p className="text-xs opacity-75">Tell this number to the operator</p>
+            <p className="text-xs text-slate-400">Tell this number to the operator</p>
           </div>
 
           {/* ESTIMATED PRICE BOX (CALCULATING ANIMATION OR FINALIZED PRICE) */}
           {isCalculating ? (
-            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-200/80 rounded-2xl p-4 mb-4 text-center shadow-sm animate-pulse">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4 text-center shadow-xs animate-pulse">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
                 <p className="text-xs text-indigo-950 font-bold uppercase tracking-wide">
@@ -455,8 +484,8 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
           {/* Shop Counter Payment Card */}
           <div className="bg-white rounded-2xl p-4 mb-4 border border-indigo-100 shadow-sm text-center space-y-2">
-            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto font-bold text-lg">
-              🏪
+            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
+              <Store className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
               <p className="text-xs font-bold text-gray-800">Pay at Shop Counter</p>
@@ -464,10 +493,10 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                 Please mention token <strong className="text-indigo-700 font-black">#{orderToken}</strong> at the counter to collect your prints.
               </p>
             </div>
-            <div className="pt-1.5 border-t border-gray-100 flex items-center justify-center gap-2 text-[11px] text-gray-600 font-medium">
-              <span>💵 Cash</span>
+            <div className="pt-1.5 border-t border-gray-100 flex items-center justify-center gap-3 text-[11px] text-gray-600 font-medium">
+              <span className="flex items-center gap-1"><Banknote className="w-3.5 h-3.5 text-gray-500" /> Cash</span>
               <span>•</span>
-              <span>📱 Counter QR / UPI</span>
+              <span className="flex items-center gap-1"><QrCode className="w-3.5 h-3.5 text-gray-500" /> Counter QR / UPI</span>
             </div>
           </div>
 
@@ -603,11 +632,11 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
   // ─── MAIN UPLOAD SELECTION FORM ──────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-xs">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow">
+          <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-xs">
             <Printer className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -773,7 +802,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
-                  🎨 Color
+                  Color
                 </button>
               </div>
             </div>
@@ -921,6 +950,17 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             <p className="text-xs text-red-700">{submitError}</p>
           </div>
         )}
+
+        {/* Pre-launch compliance footer links */}
+        <div className="pt-8 pb-12 text-center text-xs text-slate-500 flex items-center justify-center gap-3">
+          <Link href="/privacy" className="hover:text-slate-800 transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-slate-800 transition-colors">
+            Terms & Conditions
+          </Link>
+        </div>
       </div>
 
       {/* Sticky bottom submit button */}
@@ -930,10 +970,10 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`w-full py-3.5 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
+              className={`w-full py-3.5 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
                 isSubmitting
-                  ? "bg-indigo-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200"
+                  ? "bg-slate-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100"
               }`}
             >
               {isSubmitting ? (

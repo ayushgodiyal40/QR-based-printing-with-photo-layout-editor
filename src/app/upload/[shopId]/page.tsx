@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ shopId: s
       .where(query)
       .limit(1);
     return {
-      title: shop[0]?.name ? `${shop[0].name} — Send Files for Printing` : "Send Files for Printing",
+      title: shop[0]?.name ? `${shop[0].name} - Send Files for Printing` : "Send Files for Printing",
       description: "Upload your PDFs and photos to the print shop instantly.",
     };
   } catch {

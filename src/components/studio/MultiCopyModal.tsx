@@ -110,7 +110,7 @@ export const MultiCopyModal: React.FC<MultiCopyModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-neutral-400">
-                Select copies count — length & breadth are auto-calculated to maximally utilize the sheet
+                Select copies count: length & breadth are auto-calculated to maximally utilize the sheet
               </p>
             </div>
           </div>

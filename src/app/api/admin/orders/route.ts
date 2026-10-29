@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { orders, orderFiles } from "@/lib/db/schema";
-import { eq, and, desc, asc, like, or, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, like, or, inArray, ne } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -34,6 +34,9 @@ export async function GET(req: NextRequest) {
     } else {
       conditions.push(eq(orders.status, status as any));
     }
+  } else {
+    // Hide incomplete uploading drafts until all files are ready from client side
+    conditions.push(ne(orders.status, "uploading"));
   }
 
   const orderList = await db
