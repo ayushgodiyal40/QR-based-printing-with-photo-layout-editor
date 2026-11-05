@@ -10,29 +10,49 @@ export interface PrintJob {
   sides: "single" | "double";
 }
 
+const pricingCache = new Map<string, { rules: any[]; cachedAt: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function invalidatePricingCache(shopId?: string) {
+  if (shopId) {
+    pricingCache.delete(shopId);
+  } else {
+    pricingCache.clear();
+  }
+}
+
 /**
  * Calculate the estimated price for a print job based on shop pricing rules.
+ * Uses high-performance in-memory cache to avoid redundant database roundtrips.
  */
 export async function calculatePrice(
   shopId: string,
   job: PrintJob
 ): Promise<number> {
-  const rules = await db
-    .select()
-    .from(pricingRules)
-    .where(
-      and(
-        eq(pricingRules.shopId, shopId),
-        eq(pricingRules.colorMode, job.colorMode),
-        eq(pricingRules.paperSize, job.paperSize as any),
-        eq(pricingRules.sides, job.sides)
-      )
-    )
-    .limit(1);
+  const now = Date.now();
+  const cached = pricingCache.get(shopId);
+  let allShopRules: any[];
 
-  if (!rules.length) return 0;
+  if (cached && now - cached.cachedAt < CACHE_TTL_MS) {
+    allShopRules = cached.rules;
+  } else {
+    allShopRules = await db
+      .select()
+      .from(pricingRules)
+      .where(eq(pricingRules.shopId, shopId));
+    pricingCache.set(shopId, { rules: allShopRules, cachedAt: now });
+  }
 
-  const pricePerPage = parseFloat(rules[0].pricePerPage as string);
+  const rule = allShopRules.find(
+    (r) =>
+      r.colorMode === job.colorMode &&
+      r.paperSize === job.paperSize &&
+      r.sides === job.sides
+  );
+
+  if (!rule) return 0;
+
+  const pricePerPage = parseFloat(rule.pricePerPage as string);
   // For double-sided, each sheet covers 2 pages but count per page
   const sheets =
     job.sides === "double" ? Math.ceil(job.pages / 2) : job.pages;

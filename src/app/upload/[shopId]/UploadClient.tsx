@@ -100,39 +100,85 @@ function getFileIcon(file: File) {
   return <ImageIcon className="w-5 h-5 text-blue-500" />;
 }
 
-async function compressImageIfNeeded(file: File): Promise<File> {
-  if (!file.type.startsWith("image/") || file.size < 1.5 * 1024 * 1024) {
-    return file;
+interface ProcessedMedia {
+  file: File;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Concurrency runner: limits parallel uploads to 2 at a time.
+ * Prevents mobile network packet congestion, bufferbloat, and database lock contention.
+ */
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit = 2
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < tasks.length) {
+      const currentIndex = index++;
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+async function processMediaFile(file: File): Promise<ProcessedMedia> {
+  const isImage =
+    file.type.startsWith("image/") ||
+    [".jpg", ".jpeg", ".png", ".webp"].some((ext) =>
+      file.name.toLowerCase().endsWith(ext)
+    );
+
+  if (!isImage) {
+    return { file };
   }
 
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
+
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX_DIM = 2400;
-      let width = img.width;
-      let height = img.height;
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
 
-      if (width > MAX_DIM || height > MAX_DIM) {
-        if (width > height) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-      } else {
-        resolve(file);
+      // If already under 1.5MB, avoid costly canvas bitmap allocation
+      if (file.size < 1.5 * 1024 * 1024) {
+        resolve({ file, width, height });
         return;
       }
 
+      const MAX_DIM = 2400;
+      let targetWidth = width;
+      let targetHeight = height;
+
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          targetHeight = Math.round((height * MAX_DIM) / width);
+          targetWidth = MAX_DIM;
+        } else {
+          targetWidth = Math.round((width * MAX_DIM) / height);
+          targetHeight = MAX_DIM;
+        }
+      }
+
       const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { resolve(file); return; }
-      ctx.drawImage(img, 0, 0, width, height);
+      if (!ctx) {
+        resolve({ file, width, height });
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
       canvas.toBlob(
         (blob) => {
@@ -141,16 +187,21 @@ async function compressImageIfNeeded(file: File): Promise<File> {
               type: "image/jpeg",
               lastModified: Date.now(),
             });
-            resolve(compressedFile);
+            resolve({ file: compressedFile, width: targetWidth, height: targetHeight });
           } else {
-            resolve(file);
+            resolve({ file, width, height });
           }
         },
         "image/jpeg",
         0.88
       );
     };
-    img.onerror = () => resolve(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ file });
+    };
+
     img.src = url;
   });
 }
@@ -159,7 +210,15 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
-  const idempotencyKey = useRef(crypto.randomUUID());
+
+  // Pre-generate token and order ID so user sees token instantaneously (0ms delay)
+  const clientOrderIdRef = useRef<string>(crypto.randomUUID());
+  const clientTokenRef = useRef<string>(
+    Array.from({ length: 4 }, () => "23456789"[Math.floor(Math.random() * 8)]).join("")
+  );
+  const isSubmittingRef = useRef<boolean>(false);
+  const uploadedFileIdsRef = useRef<Set<string>>(new Set());
+  const processedMediaCache = useRef<Map<string, ProcessedMedia>>(new Map());
 
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -243,19 +302,46 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       validRawFiles.push(file);
     }
 
-    const processedItems: UploadedFile[] = [];
-    for (const file of validRawFiles) {
-      const pageCount = await detectPdfPageCount(file);
-      processedItems.push({
+    if (validRawFiles.length === 0) return;
+
+    setFiles((prev) => {
+      // Deduplicate against existing files in state
+      const existingKeys = new Set(prev.map((f) => `${f.file.name}_${f.file.size}`));
+      const nonDuplicateFiles = validRawFiles.filter(
+        (f) => !existingKeys.has(`${f.name}_${f.size}`)
+      );
+
+      if (nonDuplicateFiles.length === 0) {
+        return prev;
+      }
+
+      const processedItems: UploadedFile[] = nonDuplicateFiles.map((file) => ({
         id: crypto.randomUUID(),
         file,
         status: "pending",
         progress: 0,
-        pageCount,
-      });
-    }
+        pageCount: 1,
+      }));
 
-    setFiles((prev) => [...prev, ...processedItems]);
+      // Pre-process media and detect PDF pages asynchronously in the background
+      setTimeout(async () => {
+        for (const item of processedItems) {
+          if (!processedMediaCache.current.has(item.id)) {
+            processMediaFile(item.file).then((res) => {
+              processedMediaCache.current.set(item.id, res);
+            }).catch(() => {});
+          }
+          const pageCount = await detectPdfPageCount(item.file);
+          if (pageCount > 1) {
+            setFiles((current) =>
+              current.map((f) => (f.id === item.id ? { ...f, pageCount } : f))
+            );
+          }
+        }
+      }, 0);
+
+      return [...prev, ...processedItems];
+    });
   }, []);
 
   const handleDrop = useCallback(
@@ -268,6 +354,8 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   );
 
   const removeFile = (id: string) => {
+    uploadedFileIdsRef.current.delete(id);
+    processedMediaCache.current.delete(id);
     setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
@@ -277,14 +365,28 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     isLastFile = false,
     totalExpectedFiles?: number
   ): Promise<void> => {
+    // Prevent duplicate uploads for this item
+    if (uploadedFileIdsRef.current.has(item.id)) {
+      return;
+    }
+    uploadedFileIdsRef.current.add(item.id);
+
     setFiles((prev) =>
       prev.map((f) => (f.id === item.id ? { ...f, status: "uploading", progress: 5 } : f))
     );
 
     try {
-      const fileToUpload = await compressImageIfNeeded(item.file);
+      let processed = processedMediaCache.current.get(item.id);
+      if (!processed) {
+        processed = await processMediaFile(item.file);
+        processedMediaCache.current.set(item.id, processed);
+      }
+
       const formData = new FormData();
-      formData.append("file", fileToUpload);
+      formData.append("file", processed.file);
+      if (processed.width) formData.append("imageWidth", String(processed.width));
+      if (processed.height) formData.append("imageHeight", String(processed.height));
+      formData.append("clientPageCount", String(item.pageCount || 1));
       if (isLastFile) {
         formData.append("isLastFile", "true");
       }
@@ -334,6 +436,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
         xhr.send(formData);
       });
     } catch (err: any) {
+      uploadedFileIdsRef.current.delete(item.id);
       setFiles((prev) =>
         prev.map((f) =>
           f.id === item.id ? { ...f, status: "error", error: err.message } : f
@@ -351,6 +454,13 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       const ext = "." + file.name.split(".").pop()?.toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         alert(`"${file.name}" is not supported.`);
+        continue;
+      }
+      // Deduplicate against existing files
+      const isAlreadyAdded = files.some(
+        (f) => f.file.name === file.name && f.file.size === file.size
+      );
+      if (isAlreadyAdded) {
         continue;
       }
       validRawFiles.push(file);
@@ -372,32 +482,46 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     if (addedItems.length > 0) {
       setFiles((prev) => [...prev, ...addedItems]);
       const totalNew = addedItems.length;
-      addedItems.forEach((item, idx) => {
-        uploadSingleFile(item, orderId, idx === totalNew - 1, files.length + totalNew);
-      });
+      const tasks = addedItems.map((item, idx) => () =>
+        uploadSingleFile(item, orderId, idx === totalNew - 1, files.length + totalNew)
+      );
+      runWithConcurrency(tasks, 2);
     }
   };
 
   const handleSubmit = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
 
+    const targetOrderId = clientOrderIdRef.current;
+    const targetToken = clientTokenRef.current;
+
+    // 1. INSTANT 0ms UI TRANSITION to Token Screen
+    setOrderId(targetOrderId);
+    setOrderToken(targetToken);
+    setOrderNumber(`PS-${targetToken}`);
+    setStep("submitted");
+
     try {
+      // Create order record in background
       const orderRes = await fetch("/api/orders/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shopId: shop.id,
-          idempotencyKey: idempotencyKey.current,
-          customerName: customerName || undefined,
-          customerPhone: customerPhone || undefined,
+          orderId: targetOrderId,
+          token: targetToken,
+          idempotencyKey: targetOrderId,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim() || undefined,
           colorMode,
           paperSize,
           copies,
           sides,
           orientation,
-          pageRange: pageRange || undefined,
+          pageRange: pageRange.trim() || undefined,
         }),
       });
 
@@ -406,34 +530,28 @@ export default function UploadClient({ shop }: { shop: Shop }) {
         throw new Error(err.error || "Failed to create order.");
       }
 
-      const { orderId: newOrderId, token, orderNumber: num } = await orderRes.json();
-      setOrderId(newOrderId);
-      setOrderToken(token);
-      setOrderNumber(num);
+      const orderData = await orderRes.json();
+      if (orderData.token && orderData.token !== targetToken) {
+        setOrderToken(orderData.token);
+        setOrderNumber(orderData.orderNumber || `PS-${orderData.token}`);
+      }
 
-      // INSTANT UI TRANSITION to Token Screen
-      setStep("submitted");
-
-      // Upload files in background and notify live queue once all files are ready
+      // 2. Upload files with steady controlled concurrency (2 at a time) for reliable, fast throughput
       const totalCount = files.length;
-      const uploadPromises = files.map((f, idx) =>
-        uploadSingleFile(f, newOrderId, idx === totalCount - 1, totalCount)
+      const tasks = files.map((f, idx) => () =>
+        uploadSingleFile(f, targetOrderId, idx === totalCount - 1, totalCount)
       );
 
-      Promise.all(uploadPromises)
-        .then(async () => {
-          try {
-            await fetch(`/api/orders/${newOrderId}/ready`, { method: "POST" });
-          } catch (e) {
-            console.error("Failed to mark order ready:", e);
-          }
-        })
-        .catch((e) => {
-          console.error("Upload error:", e);
-        });
+      await runWithConcurrency(tasks, 2);
 
+      try {
+        await fetch(`/api/orders/${targetOrderId}/ready`, { method: "POST" });
+      } catch (e) {
+        console.error("Failed to mark order ready:", e);
+      }
     } catch (err: any) {
-      setSubmitError(err.message || "Something went wrong. Please try again.");
+      console.error("Submission error:", err);
+      setSubmitError(err.message || "Failed to complete upload. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -456,6 +574,25 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             <p className="text-6xl font-black tracking-wider mb-1">{orderToken}</p>
             <p className="text-xs text-slate-400">Tell this number to the operator</p>
           </div>
+
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3.5 mb-4 text-left flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-red-700">{submitError}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    isSubmittingRef.current = false;
+                    handleSubmit();
+                  }}
+                  className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Retry Upload
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ESTIMATED PRICE BOX (CALCULATING ANIMATION OR FINALIZED PRICE) */}
           {isCalculating ? (
@@ -558,7 +695,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             multiple
             accept={ALLOWED_EXTENSIONS.join(",")}
             className="hidden"
-            onChange={(e) => e.target.files && handleAddMoreFilesAfterSubmit(e.target.files)}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleAddMoreFilesAfterSubmit(e.target.files);
+                e.target.value = "";
+              }
+            }}
           />
 
           <button
@@ -672,15 +814,21 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               </span>
             ))}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={ALLOWED_EXTENSIONS.join(",")}
-            className="hidden"
-            onChange={(e) => e.target.files && addFiles(e.target.files)}
-          />
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ALLOWED_EXTENSIONS.join(",")}
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }
+          }}
+        />
 
         {/* File List */}
         {files.length > 0 && (
@@ -792,7 +940,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
-                  ⬛ Black & White
+                  Black & White
                 </button>
                 <button
                   onClick={() => setColorMode("color")}
@@ -979,12 +1127,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Generating Token...
+                  Sending Files...
                 </>
               ) : (
                 <>
-                  <Zap className="w-5 h-5 fill-white" />
-                  Send & Get Token Instant →
+                  <Send className="w-5 h-5 text-white" />
+                  Send for Printing
                 </>
               )}
             </button>

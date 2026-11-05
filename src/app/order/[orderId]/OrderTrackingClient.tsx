@@ -159,6 +159,16 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
         throw new Error("Failed to load order.");
       }
       const data = await res.json();
+      if (data.files && Array.isArray(data.files)) {
+        const seen = new Set<string>();
+        data.files = data.files.filter((f: any) => {
+          const k = `${f.originalName}_${f.sizeBytes}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        data.totalFiles = data.files.length;
+      }
       setOrder(data);
       setError(null);
     } catch (e: any) {
@@ -202,11 +212,20 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
     const filesArray = Array.from(filesList);
     if (filesArray.length === 0) return;
 
+    // Deduplicate against files already uploaded to this order
+    const existingFileNames = new Set((order?.files || []).map((f) => `${f.originalName}_${f.sizeBytes}`));
+    const nonDuplicates = filesArray.filter((f) => !existingFileNames.has(`${f.name}_${f.size}`));
+
+    if (nonDuplicates.length === 0) {
+      alert("Selected file(s) are already uploaded to this order.");
+      return;
+    }
+
     setUploadingMore(true);
-    setUploadMsg("Uploading additional files…");
+    setUploadMsg("Uploading additional files...");
 
     try {
-      for (const file of filesArray) {
+      for (const file of nonDuplicates) {
         const formData = new FormData();
         formData.append("file", file);
         const res = await fetch(`/api/orders/${orderId}/files`, {
@@ -380,7 +399,12 @@ export default function OrderTrackingClient({ orderId }: { orderId: string }) {
               multiple
               accept={ALLOWED_EXTENSIONS.join(",")}
               className="hidden"
-              onChange={(e) => e.target.files && handleAddMoreFiles(e.target.files)}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  handleAddMoreFiles(e.target.files);
+                  e.target.value = "";
+                }
+              }}
             />
             <button
               onClick={() => fileInputRef.current?.click()}

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { pricingRules } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { audit } from "@/lib/audit";
+import { invalidatePricingCache } from "@/lib/pricing";
 import { z } from "zod";
 
 export async function GET(_req: NextRequest) {
@@ -50,6 +51,8 @@ export async function PUT(req: NextRequest) {
       }))
     );
   }
+
+  invalidatePricingCache(shopId);
 
   await audit({
     shopId,

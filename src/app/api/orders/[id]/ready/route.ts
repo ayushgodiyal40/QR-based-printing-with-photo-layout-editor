@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { notifyShop, notifyOrder } from "@/lib/sse";
 import { audit } from "@/lib/audit";
 import { getIp } from "@/lib/rate-limit";
+import { calculatePrice } from "@/lib/pricing";
 
 export async function POST(
   req: NextRequest,
@@ -39,6 +40,15 @@ export async function POST(
   const totalFiles = files.length;
   const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
 
+  const price = await calculatePrice(order.shopId, {
+    pages: totalPages,
+    colorMode: order.colorMode,
+    paperSize: order.paperSize,
+    copies: order.copies,
+    sides: order.sides,
+  });
+  const estimatedPriceStr = price.toString();
+
   // Transition from "uploading" to "received" once all files are ready from client side
   if (order.status === "uploading") {
     await db
@@ -47,17 +57,19 @@ export async function POST(
         status: "received",
         totalFiles,
         totalPages,
+        estimatedPrice: estimatedPriceStr,
         updatedAt: new Date(),
       })
       .where(eq(orders.id, orderId));
 
-    await audit({
+    // Non-blocking background audit logging
+    audit({
       shopId: order.shopId,
       orderId,
       action: "order.ready",
       ipAddress: ip,
       details: { token: order.token, totalFiles, totalPages },
-    });
+    }).catch(() => {});
 
     // Broadcast new_order to live queue now that all files are complete & ready
     notifyShop(order.shopId, {
@@ -77,7 +89,7 @@ export async function POST(
         sides: order.sides,
         totalFiles,
         totalPages,
-        estimatedPrice: order.estimatedPrice,
+        estimatedPrice: estimatedPriceStr,
         createdAt: order.createdAt,
       },
     });
@@ -89,7 +101,7 @@ export async function POST(
         status: "received",
         totalFiles,
         totalPages,
-        estimatedPrice: order.estimatedPrice,
+        estimatedPrice: estimatedPriceStr,
       },
     });
   }
@@ -100,6 +112,6 @@ export async function POST(
     status: "received",
     totalFiles,
     totalPages,
-    estimatedPrice: order.estimatedPrice,
+    estimatedPrice: estimatedPriceStr || order.estimatedPrice,
   });
 }

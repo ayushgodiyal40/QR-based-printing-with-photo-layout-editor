@@ -117,9 +117,18 @@ export default function OrderDetailPage() {
       }
       const data = await res.json();
       setOrder(data.order);
-      setFiles(data.files || []);
+      // Deduplicate files by name and size to ensure zero duplicate file rows on screen
+      const rawFiles: any[] = data.files || [];
+      const seenFileKeys = new Set<string>();
+      const cleanFiles = rawFiles.filter((f) => {
+        const k = `${f.originalName}_${f.sizeBytes}`;
+        if (seenFileKeys.has(k)) return false;
+        seenFileKeys.add(k);
+        return true;
+      });
+      setFiles(cleanFiles);
       setNotes(data.notes || []);
-      setCachedData(cacheKey, data);
+      setCachedData(cacheKey, { ...data, files: cleanFiles });
 
       if (!isBackground) {
         setEditStatus(data.order.status);

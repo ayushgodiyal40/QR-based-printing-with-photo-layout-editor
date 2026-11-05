@@ -62,8 +62,19 @@ export async function GET(
     action: "order.viewed",
   }).catch(() => {});
 
+  // Deduplicate files by originalName and sizeBytes to guarantee clean display without duplicate copies
+  const seenFiles = new Set<string>();
+  const uniqueFiles: typeof files = [];
+  for (const file of files) {
+    const key = `${file.originalName}_${file.sizeBytes}`;
+    if (!seenFiles.has(key)) {
+      seenFiles.add(key);
+      uniqueFiles.push(file);
+    }
+  }
+
   // Pre-generate signed URLs so preview, print, and download can access files with zero latency
-  const filesWithUrls = files.map((file) => {
+  const filesWithUrls = uniqueFiles.map((file) => {
     const token = generateSignedToken(file.id, id);
     return {
       ...file,
@@ -71,7 +82,13 @@ export async function GET(
     };
   });
 
-  return NextResponse.json({ order: orderRows[0], files: filesWithUrls, notes });
+  const orderData = {
+    ...orderRows[0],
+    totalFiles: uniqueFiles.length,
+    totalPages: uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0),
+  };
+
+  return NextResponse.json({ order: orderData, files: filesWithUrls, notes });
 }
 
 const UpdateOrderSchema = z.object({

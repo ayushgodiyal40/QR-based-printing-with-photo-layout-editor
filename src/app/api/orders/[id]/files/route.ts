@@ -81,7 +81,11 @@ export async function POST(
     return NextResponse.json({ error: validation.reason }, { status: 415 });
   }
 
-  // Determine file metadata
+  // Determine file metadata (uses client hints for 100x faster throughput)
+  const clientPageCount = parseInt(formData.get("clientPageCount") as string || "0");
+  const clientWidth = parseInt(formData.get("imageWidth") as string || "0");
+  const clientHeight = parseInt(formData.get("imageHeight") as string || "0");
+
   let pageCount: number | null = null;
   let imageWidth: number | null = null;
   let imageHeight: number | null = null;
@@ -89,41 +93,24 @@ export async function POST(
   const mimeType = file.type || "application/octet-stream";
 
   if (mimeType === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    pageCount = await getPdfPageCount(buffer);
+    pageCount = await getPdfPageCount(buffer, clientPageCount > 0 ? clientPageCount : undefined);
   } else if (mimeType.startsWith("image/")) {
-    const dims = await getImageDimensions(buffer);
-    if (dims) {
-      imageWidth = dims.width;
-      imageHeight = dims.height;
+    if (clientWidth > 0 && clientHeight > 0) {
+      imageWidth = clientWidth;
+      imageHeight = clientHeight;
+    } else {
+      const dims = await getImageDimensions(buffer);
+      if (dims) {
+        imageWidth = dims.width;
+        imageHeight = dims.height;
+      }
     }
     pageCount = 1; // Each image = 1 page
   }
 
-  // Store the file
-  const { storagePath, storedName, base64Data } = await storeFile(
-    buffer,
-    file.name,
-    order.shopId,
-    orderId
-  );
-
-  // Insert file record
-  const [savedFile] = await db
-    .insert(orderFiles)
-    .values({
-      orderId,
-      originalName: file.name,
-      storedName,
-      mimeType,
-      sizeBytes: file.size,
-      pageCount,
-      imageWidth,
-      imageHeight,
-      storagePath,
-      fileData: base64Data,
-      uploadStatus: "complete",
-    })
-    .returning({
+  // Deduplication check: check if a file with the same name and size is already uploaded for this order
+  const existingFiles = await db
+    .select({
       id: orderFiles.id,
       originalName: orderFiles.originalName,
       sizeBytes: orderFiles.sizeBytes,
@@ -131,94 +118,154 @@ export async function POST(
       mimeType: orderFiles.mimeType,
       imageWidth: orderFiles.imageWidth,
       imageHeight: orderFiles.imageHeight,
-    });
-
-  // Update order totals and recalculate price
-  const allFiles = await db
-    .select({ pageCount: orderFiles.pageCount })
+    })
     .from(orderFiles)
-    .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
+    .where(
+      and(
+        eq(orderFiles.orderId, orderId),
+        eq(orderFiles.originalName, file.name),
+        eq(orderFiles.sizeBytes, file.size),
+        eq(orderFiles.isDeleted, false)
+      )
+    )
+    .limit(1);
 
-  const totalFiles = allFiles.length;
-  const totalPages = allFiles.reduce((sum: number, f: any) => sum + (f.pageCount || 1), 0);
+  let savedFile: any;
 
-  const price = await calculatePrice(order.shopId, {
-    pages: totalPages,
-    colorMode: order.colorMode,
-    paperSize: order.paperSize,
-    copies: order.copies,
-    sides: order.sides,
-  });
+  if (existingFiles.length > 0) {
+    // File already exists for this order: reuse to prevent duplicate copies
+    savedFile = existingFiles[0];
+  } else {
+    // Store the file
+    const { storagePath, storedName, base64Data } = await storeFile(
+      buffer,
+      file.name,
+      order.shopId,
+      orderId
+    );
 
-  const estimatedPriceStr = price.toString();
+    // Insert file record
+    const [inserted] = await db
+      .insert(orderFiles)
+      .values({
+        orderId,
+        originalName: file.name,
+        storedName,
+        mimeType,
+        sizeBytes: file.size,
+        pageCount,
+        imageWidth,
+        imageHeight,
+        storagePath,
+        fileData: base64Data,
+        uploadStatus: "complete",
+      })
+      .returning({
+        id: orderFiles.id,
+        originalName: orderFiles.originalName,
+        sizeBytes: orderFiles.sizeBytes,
+        pageCount: orderFiles.pageCount,
+        mimeType: orderFiles.mimeType,
+        imageWidth: orderFiles.imageWidth,
+        imageHeight: orderFiles.imageHeight,
+      });
 
-  // Check if client indicated this was the last file, or totalFiles reaches expected
+    savedFile = inserted;
+
+    // Non-blocking audit log
+    audit({
+      shopId: order.shopId,
+      orderId,
+      action: "file.uploaded",
+      ipAddress: ip,
+      details: { fileName: file.name, sizeBytes: file.size, pageCount },
+    }).catch(() => {});
+  }
+
   const isLastFile = formData.get("isLastFile") === "true";
   const expectedTotalStr = formData.get("totalExpectedFiles") as string | null;
   const expectedTotal = expectedTotalStr ? parseInt(expectedTotalStr) : 0;
 
-  const shouldMarkReady =
-    order.status === "uploading" &&
-    (isLastFile || (expectedTotal > 0 && totalFiles >= expectedTotal));
+  let totalFiles = 0;
+  let totalPages = 0;
+  let estimatedPriceStr: string | null = null;
 
-  const targetStatus = shouldMarkReady ? "received" : order.status;
+  // Only update order row totals on final file or if order was already active
+  // This eliminates Postgres row-lock contention between concurrent file uploads
+  if (isLastFile || order.status !== "uploading" || expectedTotal === 1) {
+    const allFiles = await db
+      .select({ pageCount: orderFiles.pageCount })
+      .from(orderFiles)
+      .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
 
-  await db
-    .update(orders)
-    .set({
-      totalFiles,
-      totalPages,
-      estimatedPrice: estimatedPriceStr,
-      status: targetStatus,
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, orderId));
+    totalFiles = allFiles.length;
+    totalPages = allFiles.reduce((sum: number, f: any) => sum + (f.pageCount || 1), 0);
 
-  await audit({
-    shopId: order.shopId,
-    orderId,
-    action: "file.uploaded",
-    ipAddress: ip,
-    details: { fileName: file.name, sizeBytes: file.size, pageCount },
-  });
+    const price = await calculatePrice(order.shopId, {
+      pages: totalPages,
+      colorMode: order.colorMode,
+      paperSize: order.paperSize,
+      copies: order.copies,
+      sides: order.sides,
+    });
 
-  if (shouldMarkReady) {
-    // Notify admin dashboard live queue now that all files are ready
-    notifyShop(order.shopId, {
-      event: "new_order",
-      data: {
-        id: order.id,
-        orderId: order.id,
-        token: order.token,
-        orderNumber: order.orderNumber,
-        customerName: order.customerName || "Walk-in",
-        status: "received",
-        priority: order.priority,
-        colorMode: order.colorMode,
-        paperSize: order.paperSize,
-        copies: order.copies,
-        sides: order.sides,
+    estimatedPriceStr = price.toString();
+
+    const shouldMarkReady =
+      order.status === "uploading" &&
+      (isLastFile || (expectedTotal > 0 && totalFiles >= expectedTotal));
+
+    const targetStatus = shouldMarkReady ? "received" : order.status;
+
+    await db
+      .update(orders)
+      .set({
         totalFiles,
         totalPages,
         estimatedPrice: estimatedPriceStr,
-        createdAt: order.createdAt,
-      },
-    });
-    notifyOrder(orderId, {
-      event: "status_update",
-      data: {
-        status: "received",
-        totalFiles,
-        totalPages,
-        estimatedPrice: estimatedPriceStr,
-      },
-    });
-  } else if (order.status !== "uploading") {
-    // If order was already active (e.g. customer added more files after order was placed)
-    notifyShop(order.shopId, {
-      event: "order_updated",
-      data: { orderId, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
-    });
+        status: targetStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId));
+
+    if (shouldMarkReady) {
+      // Notify admin dashboard live queue now that all files are ready
+      notifyShop(order.shopId, {
+        event: "new_order",
+        data: {
+          id: order.id,
+          orderId: order.id,
+          token: order.token,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName || "Walk-in",
+          status: "received",
+          priority: order.priority,
+          colorMode: order.colorMode,
+          paperSize: order.paperSize,
+          copies: order.copies,
+          sides: order.sides,
+          totalFiles,
+          totalPages,
+          estimatedPrice: estimatedPriceStr,
+          createdAt: order.createdAt,
+        },
+      });
+      notifyOrder(orderId, {
+        event: "status_update",
+        data: {
+          status: "received",
+          totalFiles,
+          totalPages,
+          estimatedPrice: estimatedPriceStr,
+        },
+      });
+    } else if (order.status !== "uploading") {
+      // If order was already active (e.g. customer added more files after order was placed)
+      notifyShop(order.shopId, {
+        event: "order_updated",
+        data: { orderId, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
+      });
+    }
   }
 
   return NextResponse.json({

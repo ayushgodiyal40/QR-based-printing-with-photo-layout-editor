@@ -66,13 +66,26 @@ export async function GET(
         : and(eq(orderFiles.orderId, id), eq(orderFiles.isDeleted, false))
     );
 
-  const filesWithUrls = fileRows.map((f: any) => ({
+  // Deduplicate files by originalName and sizeBytes to guarantee clean display
+  const seenFiles = new Set<string>();
+  const uniqueFiles: typeof fileRows = [];
+  for (const f of fileRows) {
+    const key = `${f.originalName}_${f.sizeBytes}`;
+    if (!seenFiles.has(key)) {
+      seenFiles.add(key);
+      uniqueFiles.push(f);
+    }
+  }
+
+  const filesWithUrls = uniqueFiles.map((f: any) => ({
     ...f,
     url: `/api/files/serve?token=${generateSignedToken(f.id, id, 3600)}`,
   }));
 
   return NextResponse.json({
     ...orderRows[0],
+    totalFiles: uniqueFiles.length,
+    totalPages: uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0),
     files: filesWithUrls,
   });
 }
