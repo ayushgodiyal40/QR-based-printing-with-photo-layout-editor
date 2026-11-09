@@ -7,6 +7,7 @@ import { readFile, getAbsolutePath, fileExists } from "@/lib/storage";
 import { generateSignedToken } from "@/lib/signed-url";
 import { audit } from "@/lib/audit";
 import { getAppUrl } from "@/lib/tokens";
+import { calculatePrice } from "@/lib/pricing";
 
 /**
  * GET /api/admin/orders/[id]/files/[fileId]?action=url|download
@@ -108,9 +109,18 @@ export async function DELETE(
   const totalFiles = remainingFiles.length;
   const totalPages = remainingFiles.reduce((sum: number, f: any) => sum + (f.pageCount || 1), 0);
 
+  const price = await calculatePrice(shopId, {
+    pages: totalPages,
+    colorMode: orderRows[0].colorMode,
+    paperSize: orderRows[0].paperSize,
+    copies: orderRows[0].copies,
+    sides: orderRows[0].sides,
+  });
+  const estimatedPrice = price.toFixed(2);
+
   await db
     .update(orders)
-    .set({ totalFiles, totalPages, updatedAt: new Date() })
+    .set({ totalFiles, totalPages, estimatedPrice, updatedAt: new Date() })
     .where(eq(orders.id, orderId));
 
   await audit({
@@ -118,8 +128,8 @@ export async function DELETE(
     orderId,
     userId: session.user.id,
     action: "file.deleted",
-    details: { fileId },
+    details: { fileId, remainingFiles: totalFiles, totalPages, estimatedPrice },
   });
 
-  return NextResponse.json({ success: true, totalFiles, totalPages });
+  return NextResponse.json({ success: true, totalFiles, totalPages, estimatedPrice });
 }

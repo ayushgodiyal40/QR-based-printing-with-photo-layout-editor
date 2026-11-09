@@ -28,14 +28,26 @@ export async function POST(
   const order = orderRows[0];
 
   // Fetch all active files for this order
-  const files = await db
+  const fileRows = await db
     .select({
       id: orderFiles.id,
       pageCount: orderFiles.pageCount,
       originalName: orderFiles.originalName,
+      sizeBytes: orderFiles.sizeBytes,
     })
     .from(orderFiles)
     .where(and(eq(orderFiles.orderId, orderId), eq(orderFiles.isDeleted, false)));
+
+  // Deduplicate files by originalName and sizeBytes to guarantee clean calculations
+  const seenFiles = new Set<string>();
+  const files: typeof fileRows = [];
+  for (const f of fileRows) {
+    const key = `${f.originalName}_${f.sizeBytes}`;
+    if (!seenFiles.has(key)) {
+      seenFiles.add(key);
+      files.push(f);
+    }
+  }
 
   const totalFiles = files.length;
   const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
@@ -47,30 +59,31 @@ export async function POST(
     copies: order.copies,
     sides: order.sides,
   });
-  const estimatedPriceStr = price.toString();
+  const estimatedPriceStr = price.toFixed(2);
+  const targetStatus = order.status === "uploading" ? "received" : order.status;
 
-  // Transition from "uploading" to "received" once all files are ready from client side
+  // Always persist authoritative totals and price to database
+  await db
+    .update(orders)
+    .set({
+      status: targetStatus,
+      totalFiles,
+      totalPages,
+      estimatedPrice: estimatedPriceStr,
+      updatedAt: new Date(),
+    })
+    .where(eq(orders.id, orderId));
+
+  // Non-blocking background audit logging
+  audit({
+    shopId: order.shopId,
+    orderId,
+    action: "order.ready",
+    ipAddress: ip,
+    details: { token: order.token, totalFiles, totalPages, estimatedPrice: estimatedPriceStr },
+  }).catch(() => {});
+
   if (order.status === "uploading") {
-    await db
-      .update(orders)
-      .set({
-        status: "received",
-        totalFiles,
-        totalPages,
-        estimatedPrice: estimatedPriceStr,
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, orderId));
-
-    // Non-blocking background audit logging
-    audit({
-      shopId: order.shopId,
-      orderId,
-      action: "order.ready",
-      ipAddress: ip,
-      details: { token: order.token, totalFiles, totalPages },
-    }).catch(() => {});
-
     // Broadcast new_order to live queue now that all files are complete & ready
     notifyShop(order.shopId, {
       event: "new_order",
@@ -93,12 +106,12 @@ export async function POST(
         createdAt: order.createdAt,
       },
     });
-
-    // Notify customer order tracking view
-    notifyOrder(orderId, {
-      event: "status_update",
+  } else {
+    // Broadcast updated order state if files were added
+    notifyShop(order.shopId, {
+      event: "order_updated",
       data: {
-        status: "received",
+        orderId: order.id,
         totalFiles,
         totalPages,
         estimatedPrice: estimatedPriceStr,
@@ -106,12 +119,23 @@ export async function POST(
     });
   }
 
+  // Notify customer order tracking view
+  notifyOrder(orderId, {
+    event: "status_update",
+    data: {
+      status: targetStatus,
+      totalFiles,
+      totalPages,
+      estimatedPrice: estimatedPriceStr,
+    },
+  });
+
   return NextResponse.json({
     success: true,
     orderId,
-    status: "received",
+    status: targetStatus,
     totalFiles,
     totalPages,
-    estimatedPrice: estimatedPriceStr || order.estimatedPrice,
+    estimatedPrice: estimatedPriceStr,
   });
 }

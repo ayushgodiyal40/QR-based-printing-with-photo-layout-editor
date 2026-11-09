@@ -274,6 +274,13 @@ export default function UploadClient({ shop }: { shop: Shop }) {
     const ext = "." + file.name.split(".").pop()?.toLowerCase();
     if (file.type === "application/pdf" || ext === ".pdf") {
       try {
+        const text = await file.text();
+        const matches = text.match(/\/Type\s*\/Page\b(?!\s*s)/g);
+        if (matches && matches.length > 0) {
+          return matches.length;
+        }
+      } catch {}
+      try {
         const { PDFDocument } = await import("pdf-lib");
         const buffer = await file.arrayBuffer();
         const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
@@ -324,21 +331,20 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       }));
 
       // Pre-process media and detect PDF pages asynchronously in the background
-      setTimeout(async () => {
-        for (const item of processedItems) {
-          if (!processedMediaCache.current.has(item.id)) {
-            processMediaFile(item.file).then((res) => {
-              processedMediaCache.current.set(item.id, res);
-            }).catch(() => {});
-          }
-          const pageCount = await detectPdfPageCount(item.file);
+      for (const item of processedItems) {
+        if (!processedMediaCache.current.has(item.id)) {
+          processMediaFile(item.file).then((res) => {
+            processedMediaCache.current.set(item.id, res);
+          }).catch(() => {});
+        }
+        detectPdfPageCount(item.file).then((pageCount) => {
           if (pageCount > 1) {
             setFiles((current) =>
               current.map((f) => (f.id === item.id ? { ...f, pageCount } : f))
             );
           }
-        }
-      }, 0);
+        }).catch(() => {});
+      }
 
       return [...prev, ...processedItems];
     });
@@ -382,11 +388,17 @@ export default function UploadClient({ shop }: { shop: Shop }) {
         processedMediaCache.current.set(item.id, processed);
       }
 
+      const isPdf = item.file.type === "application/pdf" || item.file.name.toLowerCase().endsWith(".pdf");
+      let detectedPageCount = item.pageCount || 1;
+      if (isPdf && detectedPageCount <= 1) {
+        detectedPageCount = await detectPdfPageCount(item.file);
+      }
+
       const formData = new FormData();
       formData.append("file", processed.file);
       if (processed.width) formData.append("imageWidth", String(processed.width));
       if (processed.height) formData.append("imageHeight", String(processed.height));
-      formData.append("clientPageCount", String(item.pageCount || 1));
+      formData.append("clientPageCount", String(detectedPageCount));
       if (isLastFile) {
         formData.append("isLastFile", "true");
       }
@@ -409,10 +421,17 @@ export default function UploadClient({ shop }: { shop: Shop }) {
         xhr.onload = () => {
           if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
+            const resolvedPageCount = data.pageCount || detectedPageCount;
             setFiles((prev) =>
               prev.map((f) =>
                 f.id === item.id
-                  ? { ...f, status: "done", progress: 100, fileId: data.fileId, pageCount: data.pageCount }
+                  ? {
+                      ...f,
+                      status: "done",
+                      progress: 100,
+                      fileId: data.fileId,
+                      pageCount: resolvedPageCount,
+                    }
                   : f
               )
             );
@@ -485,7 +504,16 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       const tasks = addedItems.map((item, idx) => () =>
         uploadSingleFile(item, orderId, idx === totalNew - 1, files.length + totalNew)
       );
-      runWithConcurrency(tasks, 2);
+      await runWithConcurrency(tasks, 2);
+      try {
+        const readyRes = await fetch(`/api/orders/${orderId}/ready`, { method: "POST" });
+        if (readyRes.ok) {
+          const readyData = await readyRes.json();
+          if (readyData.estimatedPrice) {
+            setEstimatedPrice(readyData.estimatedPrice);
+          }
+        }
+      } catch {}
     }
   };
 
@@ -545,7 +573,13 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       await runWithConcurrency(tasks, 2);
 
       try {
-        await fetch(`/api/orders/${targetOrderId}/ready`, { method: "POST" });
+        const readyRes = await fetch(`/api/orders/${targetOrderId}/ready`, { method: "POST" });
+        if (readyRes.ok) {
+          const readyData = await readyRes.json();
+          if (readyData.estimatedPrice) {
+            setEstimatedPrice(readyData.estimatedPrice);
+          }
+        }
       } catch (e) {
         console.error("Failed to mark order ready:", e);
       }

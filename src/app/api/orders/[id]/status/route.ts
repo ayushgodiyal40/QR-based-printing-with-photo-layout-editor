@@ -4,6 +4,7 @@ import { orders, orderFiles, shops } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
 
 import { generateSignedToken } from "@/lib/signed-url";
+import { calculatePrice } from "@/lib/pricing";
 
 export async function GET(
   _req: NextRequest,
@@ -82,10 +83,36 @@ export async function GET(
     url: `/api/files/serve?token=${generateSignedToken(f.id, id, 3600)}`,
   }));
 
+  const actualTotalPages = uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+  let finalEstimatedPrice = orderRows[0].estimatedPrice;
+
+  // If estimatedPrice is missing or totalPages in DB differs, recalculate dynamically
+  if (!finalEstimatedPrice || orderRows[0].totalPages !== actualTotalPages) {
+    const calculated = await calculatePrice(orderRows[0].shopId, {
+      pages: actualTotalPages,
+      colorMode: orderRows[0].colorMode,
+      paperSize: orderRows[0].paperSize,
+      copies: orderRows[0].copies,
+      sides: orderRows[0].sides,
+    });
+    finalEstimatedPrice = calculated.toFixed(2);
+    // Asynchronously synchronize order row
+    db.update(orders)
+      .set({
+        totalPages: actualTotalPages,
+        totalFiles: uniqueFiles.length,
+        estimatedPrice: finalEstimatedPrice,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .catch(() => {});
+  }
+
   return NextResponse.json({
     ...orderRows[0],
     totalFiles: uniqueFiles.length,
-    totalPages: uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0),
+    totalPages: actualTotalPages,
+    estimatedPrice: finalEstimatedPrice,
     files: filesWithUrls,
   });
 }

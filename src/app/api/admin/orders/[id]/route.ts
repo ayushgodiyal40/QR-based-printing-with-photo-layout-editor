@@ -82,10 +82,34 @@ export async function GET(
     };
   });
 
+  const actualTotalPages = uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0);
+  let finalEstimatedPrice = orderRows[0].estimatedPrice;
+
+  if (!finalEstimatedPrice || orderRows[0].totalPages !== actualTotalPages) {
+    const calculated = await calculatePrice(shopId, {
+      pages: actualTotalPages,
+      colorMode: orderRows[0].colorMode,
+      paperSize: orderRows[0].paperSize,
+      copies: orderRows[0].copies,
+      sides: orderRows[0].sides,
+    });
+    finalEstimatedPrice = calculated.toFixed(2);
+    db.update(orders)
+      .set({
+        totalPages: actualTotalPages,
+        totalFiles: uniqueFiles.length,
+        estimatedPrice: finalEstimatedPrice,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, id))
+      .catch(() => {});
+  }
+
   const orderData = {
     ...orderRows[0],
     totalFiles: uniqueFiles.length,
-    totalPages: uniqueFiles.reduce((sum, f) => sum + (f.pageCount || 1), 0),
+    totalPages: actualTotalPages,
+    estimatedPrice: finalEstimatedPrice,
   };
 
   return NextResponse.json({ order: orderData, files: filesWithUrls, notes });

@@ -209,7 +209,7 @@ export async function POST(
       sides: order.sides,
     });
 
-    estimatedPriceStr = price.toString();
+    estimatedPriceStr = price.toFixed(2);
 
     const shouldMarkReady =
       order.status === "uploading" &&
