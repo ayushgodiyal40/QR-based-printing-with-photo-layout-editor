@@ -208,12 +208,12 @@ async function processMediaFile(file: File): Promise<ProcessedMedia> {
 
 function CircularUploadProgress({
   progress,
-  doneCount,
+  readyCount,
   totalCount,
   hasError = false,
 }: {
   progress: number;
-  doneCount: number;
+  readyCount: number;
   totalCount: number;
   hasError?: boolean;
 }) {
@@ -222,23 +222,21 @@ function CircularUploadProgress({
   const center = size / 2;
   const radius = (size - strokeWidth) / 2; // 40.5
   const circumference = 2 * Math.PI * radius; // ~254.47
-  // Keep at least 3% arc visible during upload so indicator feels active immediately
-  const displayProgress = Math.max(progress, 3);
-  const strokeDashoffset = circumference - (displayProgress / 100) * circumference;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
     <div className="relative w-[88px] h-[88px] mx-auto mb-3 flex items-center justify-center">
-      {/* Outer ambient pulsing glow */}
+      {/* Outer ambient pulsing glow matching the ready sign */}
       <div
         className={`absolute inset-0 rounded-full animate-pulse pointer-events-none ${
-          hasError ? "bg-red-50" : "bg-indigo-50/80"
+          hasError ? "bg-red-50" : "bg-emerald-50/80"
         }`}
       />
 
       {/* Decorative rotating dashed accent ring providing that authentic loading sign feel */}
       <svg
         className={`absolute inset-0 w-[88px] h-[88px] animate-spin pointer-events-none ${
-          hasError ? "text-red-200/50" : "text-indigo-300/40"
+          hasError ? "text-red-200/50" : "text-emerald-300/40"
         }`}
         style={{ animationDuration: "2.8s" }}
         viewBox={`0 0 ${size} ${size}`}
@@ -268,32 +266,32 @@ function CircularUploadProgress({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Animated Progress Arc */}
+        {/* Animated Ready Progress Arc in emerald green matching ready sign */}
         <circle
           cx={center}
           cy={center}
           r={radius}
-          stroke={hasError ? "#EF4444" : "#4F46E5"}
+          stroke={hasError ? "#EF4444" : "#059669"}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           fill="none"
-          style={{ transition: "stroke-dashoffset 300ms ease-out" }}
+          style={{ transition: "stroke-dashoffset 400ms cubic-bezier(0.4, 0, 0.2, 1)" }}
         />
       </svg>
 
-      {/* Center Percentage & File Count */}
+      {/* Center Percentage & Ready Sign Indication */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none pointer-events-none">
         <span
-          className={`text-lg font-black tracking-tight leading-none ${
-            hasError ? "text-red-600" : "text-indigo-700"
+          className={`text-xl font-black tracking-tight leading-none ${
+            hasError ? "text-red-600" : "text-emerald-700"
           }`}
         >
           {progress}%
         </span>
-        <span className="text-[10px] font-bold text-slate-400 mt-1 leading-none">
-          {doneCount}/{totalCount}
+        <span className="text-[10px] font-bold text-emerald-600/80 mt-1 leading-none">
+          {readyCount}/{totalCount} ready
         </span>
       </div>
     </div>
@@ -339,12 +337,13 @@ export default function UploadClient({ shop }: { shop: Shop }) {
   const [customerPhone, setCustomerPhone] = useState("");
 
   const totalPages = files.reduce((sum, f) => sum + (f.pageCount || 1), 0);
-  const doneFiles = files.filter((f) => f.status === "done").length;
+  const readyFiles = files.filter((f) => f.status === "done").length;
   const isCalculating = !estimatedPrice || files.some((f) => f.status === "pending" || f.status === "uploading");
   const isAllDone = files.length > 0 && files.every((f) => f.status === "done");
   const hasUploadError = !!submitError || files.some((f) => f.status === "error");
-  const totalProgress = files.length > 0
-    ? Math.min(100, Math.round(files.reduce((sum, f) => sum + (f.status === "done" ? 100 : (f.progress || 0)), 0) / files.length))
+  // Progress ring is strictly according to the ready sign indication (e.g. 1 of 4 ready = 25%, 2 of 4 ready = 50%, etc.)
+  const readyProgress = files.length > 0
+    ? Math.round((readyFiles / files.length) * 100)
     : 0;
 
   // Auto-fetch price & order status when on submitted screen
@@ -702,8 +701,8 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             </div>
           ) : (
             <CircularUploadProgress
-              progress={totalProgress}
-              doneCount={doneFiles}
+              progress={readyProgress}
+              readyCount={readyFiles}
               totalCount={files.length}
               hasError={hasUploadError}
             />
@@ -715,7 +714,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
           <p className="text-gray-500 text-xs mb-5">
             {isAllDone
               ? "Show your token number at the shop counter."
-              : `Uploading ${doneFiles} of ${files.length} file${files.length !== 1 ? "s" : ""} to shop counter...`}
+              : `${readyFiles} of ${files.length} file${files.length !== 1 ? "s" : ""} ready...`}
           </p>
 
           {/* Token Card */}
@@ -791,8 +790,8 @@ export default function UploadClient({ shop }: { shop: Shop }) {
           <div className="text-left bg-gray-50 rounded-2xl p-4 mb-4 space-y-3 border border-gray-100">
             <div className="flex justify-between items-center text-xs border-b border-gray-200 pb-2">
               <span className="font-bold text-gray-700">Files Sent ({files.length})</span>
-              <span className="font-bold text-indigo-600">
-                {doneFiles} of {files.length} uploaded
+              <span className="font-bold text-emerald-600">
+                {readyFiles} of {files.length} ready
               </span>
             </div>
 
