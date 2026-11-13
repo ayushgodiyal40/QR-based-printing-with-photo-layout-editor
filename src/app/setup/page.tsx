@@ -68,7 +68,7 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
             <Printer className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">PrintShop Setup</h1>

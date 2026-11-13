@@ -9,10 +9,7 @@ export const metadata: Metadata = {
   description:
     "Send your documents and photos to the print shop instantly by scanning a QR code.",
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: "/favicon.ico",
   },
 };
 
