@@ -24,6 +24,7 @@ import {
   QrCode,
 } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
+import AnimatedButton from "@/components/AnimatedButton";
 
 interface Shop {
   id: string;
@@ -1262,12 +1263,12 @@ export default function UploadClient({ shop }: { shop: Shop }) {
 
       {/* Sticky bottom submit button */}
       {files.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white border-t border-gray-100 shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white border-t border-gray-100 shadow-2xl z-40">
           <div className="max-w-lg mx-auto">
-            <button
+            <AnimatedButton
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className={`w-full py-3.5 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
+              className={`w-full py-3.5 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 transition-all shadow-md ${
                 isSubmitting
                   ? "bg-slate-400 cursor-not-allowed"
                   : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100"
@@ -1275,16 +1276,16 @@ export default function UploadClient({ shop }: { shop: Shop }) {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Sending Files...
                 </>
               ) : (
                 <>
-                  <Send className="w-5 h-5 text-white" />
+                  <Send className="w-5 h-5 text-white mr-2" />
                   Send for Printing
                 </>
               )}
-            </button>
+            </AnimatedButton>
           </div>
         </div>
       )}
