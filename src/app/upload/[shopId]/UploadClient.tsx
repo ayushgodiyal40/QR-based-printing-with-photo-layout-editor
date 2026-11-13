@@ -928,7 +928,7 @@ export default function UploadClient({ shop }: { shop: Shop }) {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-xs">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow">
+          <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-xs">
             <Printer className="w-5 h-5 text-white" />
           </div>
           <div>

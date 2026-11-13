@@ -117,7 +117,7 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
       <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800/80 gap-3">
         {/* Brand & Shop Identity */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-inner font-bold text-white text-base">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-inner font-bold text-white text-base">
             <Printer className="w-4 h-4" />
           </div>
           <div>
