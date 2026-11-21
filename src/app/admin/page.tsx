@@ -74,6 +74,11 @@ function LoginForm() {
       console.error("Google sign-in exception:", err);
       if (err?.code === "auth/popup-closed-by-user") {
         setError("Sign-in popup was closed before completing.");
+      } else if (err?.code === "auth/unauthorized-domain") {
+        const currentHost = typeof window !== "undefined" ? window.location.hostname : "your domain";
+        setError(
+          `Unauthorized domain (${currentHost}). Please add "${currentHost}" in Firebase Console -> Authentication -> Settings -> Authorized domains.`
+        );
       } else {
         setError(err.message || "Failed to sign in with Google.");
       }

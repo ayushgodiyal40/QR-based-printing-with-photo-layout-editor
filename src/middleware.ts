@@ -4,30 +4,29 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Protect /admin sub-routes (e.g., /admin/dashboard)
-  if (pathname.startsWith("/admin/")) {
-    const sessionToken =
-      req.cookies.get("authjs.session-token")?.value ||
-      req.cookies.get("__Secure-authjs.session-token")?.value ||
-      req.cookies.get("next-auth.session-token")?.value ||
-      req.cookies.get("__Secure-next-auth.session-token")?.value;
+  const hasSessionToken = req.cookies
+    .getAll()
+    .some((c) => c.name.includes("session-token") && Boolean(c.value));
 
-    if (!sessionToken) {
+  // Protect /admin sub-routes (e.g., /admin/dashboard, /admin/orders)
+  if (pathname.startsWith("/admin/")) {
+    if (!hasSessionToken) {
       const loginUrl = new URL("/admin", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
+  // Protect /api/admin/ routes (return 401 JSON instead of redirecting)
+  if (pathname.startsWith("/api/admin/")) {
+    if (!hasSessionToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   // If already authenticated and accessing login page, redirect directly to dashboard
   if (pathname === "/admin") {
-    const sessionToken =
-      req.cookies.get("authjs.session-token")?.value ||
-      req.cookies.get("__Secure-authjs.session-token")?.value ||
-      req.cookies.get("next-auth.session-token")?.value ||
-      req.cookies.get("__Secure-next-auth.session-token")?.value;
-
-    if (sessionToken) {
+    if (hasSessionToken) {
       return NextResponse.redirect(new URL("/admin/dashboard", req.url));
     }
   }

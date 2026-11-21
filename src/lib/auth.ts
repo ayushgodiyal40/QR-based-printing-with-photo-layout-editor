@@ -9,6 +9,7 @@ import { verifyFirebaseIdToken } from "@/lib/firebase/admin";
 if (!process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET) {
   process.env.AUTH_SECRET = "43fb0d0b8f09fa6106655c68ee188e404bf79ef79f82fa5eb7fc51caeb76451e";
 }
+process.env.AUTH_TRUST_HOST = "true";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
