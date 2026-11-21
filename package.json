@@ -26,6 +26,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
+    "firebase": "^13.4.0",
+    "firebase-admin": "^14.5.1",
     "formidable": "^3.5.4",
     "framer-motion": "^14.14.0",
     "jspdf": "^4.2.1",

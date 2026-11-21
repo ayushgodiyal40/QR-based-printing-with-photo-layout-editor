@@ -34,6 +34,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Firebase & Cloud Credentials
+*firebase*.json
+*serviceAccount*.json
+*service-account*.json
+credentials.json
+
 # vercel
 .vercel
 
