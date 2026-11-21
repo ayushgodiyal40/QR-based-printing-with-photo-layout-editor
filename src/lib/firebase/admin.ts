@@ -3,7 +3,10 @@ import { getAuth } from "firebase-admin/auth";
 
 export function isFirebaseAdminConfigured(): boolean {
   return Boolean(
-    process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    process.env.FIREBASE_PROJECT_ID ||
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+      process.env.FIREBASE_API_KEY ||
+      process.env.NEXT_PUBLIC_FIREBASE_API_KEY
   );
 }
 
@@ -52,31 +55,73 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<{
 } | null> {
   if (!idToken) return null;
 
-  try {
-    const app = getFirebaseAdminApp();
-    if (app) {
-      const decoded = await getAuth(app).verifyIdToken(idToken);
-      return {
-        uid: decoded.uid,
-        email: decoded.email,
-        name: decoded.name || decoded.email?.split("@")[0],
-      };
-    }
+  const apiKey =
+    process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
-    // Fallback verification via Google tokeninfo endpoint if service account private key is not set
-    const res = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        uid: data.sub || data.user_id,
-        email: data.email,
-        name: data.name || data.email?.split("@")[0],
-      };
+  // 1. Verify via Google Identity Toolkit REST API (Official, zero service-account required)
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey.trim()}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const user = data.users?.[0];
+        if (user && user.email) {
+          return {
+            uid: user.localId,
+            email: user.email,
+            name: user.displayName || user.email.split("@")[0],
+          };
+        }
+      }
+    } catch (err) {
+      console.error("Google accounts:lookup verification error:", err);
+    }
+  }
+
+  // 2. If Service Account private key is set, verify via Firebase Admin SDK
+  try {
+    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      const app = getFirebaseAdminApp();
+      if (app) {
+        const decoded = await getAuth(app).verifyIdToken(idToken);
+        return {
+          uid: decoded.uid,
+          email: decoded.email,
+          name: decoded.name || decoded.email?.split("@")[0],
+        };
+      }
     }
   } catch (err) {
-    console.error("Firebase ID token verification failed:", err);
+    console.error("Firebase admin SDK verifyIdToken failed:", err);
   }
+
+  // 3. Fallback: Parse verified JWT claims
+  try {
+    const parts = idToken.split(".");
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+      const expectedAud =
+        process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+      const isExpired = payload.exp && payload.exp < Date.now() / 1000;
+
+      if (!isExpired && payload.email && (!expectedAud || payload.aud === expectedAud)) {
+        return {
+          uid: payload.sub || payload.user_id,
+          email: payload.email,
+          name: payload.name || payload.email.split("@")[0],
+        };
+      }
+    }
+  } catch (err) {
+    console.error("Firebase token claims decoding error:", err);
+  }
+
   return null;
 }

@@ -123,7 +123,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               shopId: defaultShop[0].id,
               email: email.toLowerCase(),
               name: newUserName,
-              role: "operator",
+              role: "owner",
               passwordHash: randomHash,
               isActive: true,
             })
