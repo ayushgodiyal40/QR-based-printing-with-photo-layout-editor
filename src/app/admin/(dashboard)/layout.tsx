@@ -47,10 +47,10 @@ export default async function DashboardLayout({
   const shopName = sessionShopName || (await getCachedShopName(shopId));
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-black overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen w-full bg-slate-50 dark:bg-black overflow-hidden">
       <TopProgressBar />
       <AdminSidebar shopName={shopName} />
-      <main className="flex-1 overflow-y-auto lg:ml-0 mt-14 lg:mt-0">
+      <main className="flex-1 overflow-y-auto min-w-0">
         {children}
       </main>
     </div>
