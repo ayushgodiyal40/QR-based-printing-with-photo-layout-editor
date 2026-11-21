@@ -56,7 +56,30 @@ function LoginForm() {
     setError(null);
 
     try {
-      const { idToken } = await signInWithGoogle();
+      const { user, idToken } = await signInWithGoogle();
+      const userEmail = (user.email || "").trim().toLowerCase();
+
+      // Check if user already exists in database
+      const checkRes = await fetch(
+        `/api/auth/check-user?email=${encodeURIComponent(userEmail)}`
+      );
+      const checkData = checkRes.ok ? await checkRes.json() : { exists: false };
+
+      if (!checkData.exists) {
+        // First-time user: forward to setup to enter shop details
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("google_setup_token", idToken);
+          sessionStorage.setItem("google_setup_email", userEmail);
+          sessionStorage.setItem(
+            "google_setup_name",
+            user.displayName || (user.email ? user.email.split("@")[0] : "")
+          );
+        }
+        window.location.href = "/setup";
+        return;
+      }
+
+      // Existing user: authenticate session directly
       const result = await signIn("firebase", {
         idToken,
         redirect: false,

@@ -105,46 +105,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         let user = userRows[0];
 
-        // If user does not exist yet, automatically provision active account
-        if (!user) {
-          const defaultShop = await db
-            .select({ id: shops.id, name: shops.name })
-            .from(shops)
-            .where(eq(shops.isActive, true))
-            .limit(1);
-
-          if (!defaultShop.length) return null;
-
-          const newUserName = verified.name || email.split("@")[0] || "Admin User";
-          const randomHash = await bcrypt.hash(crypto.randomUUID(), 10);
-
-          const insertedUsers = await db
-            .insert(users)
-            .values({
-              shopId: defaultShop[0].id,
-              email: email.toLowerCase(),
-              name: newUserName,
-              role: "owner",
-              passwordHash: randomHash,
-              isActive: true,
-            })
-            .returning({
-              id: users.id,
-              email: users.email,
-              name: users.name,
-              role: users.role,
-              isActive: users.isActive,
-              shopId: users.shopId,
-            });
-
-          if (!insertedUsers.length) return null;
-          user = {
-            ...insertedUsers[0],
-            shopName: defaultShop[0].name,
-          };
+        if (!user || !user.isActive) {
+          return null;
         }
-
-        if (!user || !user.isActive) return null;
 
         db.update(users)
           .set({ lastLogin: new Date() })

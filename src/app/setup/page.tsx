@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Printer, CheckCircle, Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { signInWithGoogle } from "@/lib/firebase/config";
@@ -20,7 +20,21 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ uploadUrl: string; slug: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = sessionStorage.getItem("google_setup_token");
+      const email = sessionStorage.getItem("google_setup_email");
+      const name = sessionStorage.getItem("google_setup_name");
+
+      if (token && email) {
+        setGoogleIdToken(token);
+        setAdminEmail(email);
+        setAdminName(name || email.split("@")[0] || "");
+        setUseGoogle(true);
+      }
+    }
+  }, []);
 
   const handleGoogleConnect = async () => {
     setGoogleLoading(true);
@@ -91,13 +105,24 @@ export default function SetupPage() {
           redirect: false,
         });
 
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("google_setup_token");
+          sessionStorage.removeItem("google_setup_email");
+          sessionStorage.removeItem("google_setup_name");
+        }
+
         if (!authRes?.error) {
           window.location.href = "/admin/dashboard";
           return;
         }
       }
 
-      setResult(data);
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("google_setup_token");
+        sessionStorage.removeItem("google_setup_email");
+        sessionStorage.removeItem("google_setup_name");
+      }
+
       setStep(3);
       setLoading(false);
     } catch (err: any) {
@@ -124,25 +149,14 @@ export default function SetupPage() {
           <p className="text-neutral-400 text-sm mt-1">Create your print shop and owner account</p>
         </div>
 
-        {step === 3 && result ? (
-          // Success
+        {step === 3 ? (
+          // Success (Clean, minimal screen without bulky URL boxes)
           <div className="bg-neutral-950 rounded-3xl p-8 text-center border border-neutral-900 shadow-2xl">
             <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Setup Complete!</h2>
             <p className="text-neutral-400 text-sm mb-6">Your shop is configured and ready for printing.</p>
-
-            <div className="bg-neutral-900 rounded-2xl p-4 mb-6 text-left space-y-3 border border-neutral-800">
-              <div>
-                <p className="text-xs text-neutral-400">Admin Login URL</p>
-                <p className="text-sm text-indigo-400 font-mono">/admin</p>
-              </div>
-              <div>
-                <p className="text-xs text-neutral-400">Customer Upload URL</p>
-                <p className="text-sm text-indigo-400 font-mono">{result.uploadUrl}</p>
-              </div>
-            </div>
 
             <button
               onClick={() => router.push("/admin/dashboard")}
@@ -215,8 +229,13 @@ export default function SetupPage() {
                   onClick={() => {
                     setUseGoogle(false);
                     setGoogleIdToken(null);
+                    if (typeof window !== "undefined") {
+                      sessionStorage.removeItem("google_setup_token");
+                      sessionStorage.removeItem("google_setup_email");
+                      sessionStorage.removeItem("google_setup_name");
+                    }
                   }}
-                  className="text-xs text-neutral-400 hover:text-white underline"
+                  className="text-xs text-neutral-400 hover:text-white underline cursor-pointer"
                 >
                   Change
                 </button>
