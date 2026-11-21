@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   env: {
+    AUTH_SECRET:
+      process.env.AUTH_SECRET ||
+      process.env.NEXTAUTH_SECRET ||
+      "43fb0d0b8f09fa6106655c68ee188e404bf79ef79f82fa5eb7fc51caeb76451e",
     NEXT_PUBLIC_FIREBASE_API_KEY:
       process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:
