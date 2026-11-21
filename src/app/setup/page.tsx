@@ -70,24 +70,30 @@ export default function SetupPage() {
         body: JSON.stringify(payload),
       });
 
-      const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
+      let data: any = {};
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        console.error("Failed to parse response:", e);
+      }
 
       if (!res.ok) {
-        setError(data?.error || "Setup failed. Please try again.");
+        setError(data?.error || `Setup failed (${res.status}). Please try again.`);
         setLoading(false);
         return;
       }
 
-      // If registered with Google, automatically authenticate NextAuth session
+      // If registered with Google, automatically authenticate NextAuth session and redirect
       if (useGoogle && googleIdToken) {
         const authRes = await signIn("firebase", {
           idToken: googleIdToken,
           redirect: false,
         });
 
-        if (authRes?.error) {
-          console.error("Auto sign-in error:", authRes.error);
+        if (!authRes?.error) {
+          window.location.href = "/admin/dashboard";
+          return;
         }
       }
 

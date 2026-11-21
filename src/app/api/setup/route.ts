@@ -7,6 +7,9 @@ import { verifyFirebaseIdToken } from "@/lib/firebase/admin";
 import bcrypt from "bcryptjs";
 import { ilike } from "drizzle-orm";
 import { z } from "zod";
+import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
 
 const SetupSchema = z.object({
   shopName: z.string().min(1).max(100),
@@ -47,29 +50,31 @@ export async function POST(req: NextRequest) {
 
     const cleanEmail = adminEmail.trim().toLowerCase();
 
-    // Check if user already exists
-    const existingUser = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(ilike(users.email, cleanEmail))
+    // Find or create shop
+    let shopRows = await db
+      .select()
+      .from(shops)
+      .where(ilike(shops.name, shopName.trim()))
       .limit(1);
 
-    if (existingUser.length > 0) {
-      return NextResponse.json(
-        { error: "An account with this email already exists. Please sign in directly on the admin login page." },
-        { status: 409 }
-      );
-    }
-
-    // Find or create shop
-    const existingShops = await db.select().from(shops).limit(1);
-    let shop = existingShops[0];
+    let shop = shopRows[0];
 
     if (!shop) {
-      const slug = generateSlug(shopName);
+      let slug = generateSlug(shopName);
+      // Ensure unique slug
+      const slugCheck = await db
+        .select({ id: shops.id })
+        .from(shops)
+        .where(ilike(shops.slug, slug))
+        .limit(1);
+
+      if (slugCheck.length > 0) {
+        slug = `${slug}-${Date.now().toString(36)}`;
+      }
+
       const [newShop] = await db
         .insert(shops)
-        .values({ name: shopName.trim(), slug })
+        .values({ name: shopName.trim(), slug, isActive: true })
         .returning();
       shop = newShop;
 
@@ -85,22 +90,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create user with owner privileges
-    const passwordHash = adminPassword
-      ? await bcrypt.hash(adminPassword, 12)
-      : await bcrypt.hash(crypto.randomUUID(), 10);
+    // Check if user already exists
+    const existingUser = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(ilike(users.email, cleanEmail))
+      .limit(1);
 
-    await db
-      .insert(users)
-      .values({
+    if (existingUser.length > 0) {
+      // User exists: update user to belong to this shop as owner
+      await db
+        .update(users)
+        .set({
+          shopId: shop.id,
+          name: adminName.trim(),
+          role: "owner",
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(ilike(users.email, cleanEmail));
+    } else {
+      // User does not exist: create user with owner privileges
+      const passwordHash = adminPassword
+        ? await bcrypt.hash(adminPassword, 12)
+        : await bcrypt.hash(crypto.randomUUID(), 10);
+
+      await db.insert(users).values({
         shopId: shop.id,
         email: cleanEmail,
         passwordHash,
         name: adminName.trim(),
         role: "owner",
         isActive: true,
-      })
-      .returning();
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -111,24 +134,8 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[Setup] Error:", err);
 
-    const message: string = err?.message || "";
-    if (
-      message.includes("DATABASE_URL") ||
-      message.includes("ECONNREFUSED") ||
-      message.includes("connect") ||
-      message.includes("SSL")
-    ) {
-      return NextResponse.json(
-        {
-          error: "Database connection failed. Please check your DATABASE_URL configuration.",
-          detail: message,
-        },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json(
-      { error: "Setup failed. Please check the server logs.", detail: message },
+      { error: "Setup failed: " + (err?.message || "Internal error"), detail: err?.message },
       { status: 500 }
     );
   }

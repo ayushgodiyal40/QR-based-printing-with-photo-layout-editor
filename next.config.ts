@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
       process.env.FIREBASE_MEASUREMENT_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "",
   },
   // External packages that should not be bundled in edge runtime
-  serverExternalPackages: ["pg", "sharp", "pdf-lib", "bcryptjs", "firebase-admin"],
+  serverExternalPackages: ["pg", "sharp", "pdf-lib", "bcryptjs"],
   // Allow images from local storage
   images: {
     unoptimized: true,

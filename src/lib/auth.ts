@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, shops } from "@/lib/db/schema";
 import { eq, ilike } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { verifyFirebaseIdToken } from "@/lib/firebase/admin";
 
 if (!process.env.AUTH_SECRET && !process.env.NEXTAUTH_SECRET) {
