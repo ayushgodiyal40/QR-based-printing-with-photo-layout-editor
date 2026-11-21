@@ -57,16 +57,14 @@ export default function AdminSidebar({
     {
       label: "Dashboard",
       href: "/admin/dashboard",
-      icon: (
-        <IconLayoutDashboard className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconLayoutDashboard className="h-5 w-5 shrink-0" />,
     },
     {
       label: "Orders",
       href: "/admin/orders",
       icon: (
-        <div className="relative">
-          <IconClipboardList className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+          <IconClipboardList className="h-5 w-5 shrink-0" />
           {unreadCount > 0 && !open && (
             <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
           )}
@@ -76,37 +74,27 @@ export default function AdminSidebar({
     {
       label: "Photo Studio",
       href: "/admin/studio",
-      icon: (
-        <IconSparkles className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconSparkles className="h-5 w-5 shrink-0" />,
     },
     {
       label: "Printers",
       href: "/admin/printers",
-      icon: (
-        <IconPrinter className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconPrinter className="h-5 w-5 shrink-0" />,
     },
     {
       label: "Pricing",
       href: "/admin/pricing",
-      icon: (
-        <IconCurrencyRupee className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconCurrencyRupee className="h-5 w-5 shrink-0" />,
     },
     {
       label: "Reports",
       href: "/admin/reports",
-      icon: (
-        <IconReportAnalytics className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconReportAnalytics className="h-5 w-5 shrink-0" />,
     },
     {
       label: "Settings",
       href: "/admin/settings",
-      icon: (
-        <IconSettings className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
+      icon: <IconSettings className="h-5 w-5 shrink-0" />,
     },
   ];
 
@@ -119,18 +107,35 @@ export default function AdminSidebar({
             {navLinks.map((link, idx) => {
               const active = pathname.startsWith(link.href);
               return (
-                <div key={idx} className="relative flex items-center">
+                <div key={idx} className="relative flex items-center justify-center w-full">
                   <SidebarLink
-                    link={link}
+                    link={{
+                      ...link,
+                      icon: (
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-5 h-5 shrink-0 transition-colors",
+                            active
+                              ? "text-white dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 group-hover/sidebar:text-neutral-900 dark:group-hover/sidebar:text-white"
+                          )}
+                        >
+                          {link.icon}
+                        </div>
+                      ),
+                    }}
                     className={cn(
-                      "w-full px-2.5 py-2 rounded-xl transition-all",
+                      "transition-all duration-150",
+                      open
+                        ? "w-full px-3 py-2.5 rounded-xl justify-start"
+                        : "w-10 h-10 p-0 rounded-xl justify-center mx-auto",
                       active
                         ? "bg-neutral-900 text-white dark:bg-neutral-800 font-semibold shadow-xs"
                         : "hover:bg-neutral-100 dark:hover:bg-neutral-900 text-neutral-600 dark:text-neutral-400"
                     )}
                   />
                   {link.label === "Orders" && unreadCount > 0 && open && (
-                    <span className="ml-auto mr-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    <span className="ml-auto mr-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
@@ -142,29 +147,46 @@ export default function AdminSidebar({
 
         {/* Bottom controls: Signout & Theme Toggle */}
         <div className="flex flex-col gap-2 pt-3 border-t border-neutral-200 dark:border-neutral-800">
-          <div className="flex items-center justify-between">
-            <SidebarLink
-              link={{
-                label: signingOut ? "Signing out..." : "Signout",
-                href: "#",
-                icon: (
-                  <IconLogout
-                    className={cn(
-                      "h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200",
-                      signingOut && "animate-spin text-red-500"
-                    )}
-                  />
-                ),
-              }}
-              onClick={handleSignOut}
-              className="flex-1 px-2.5 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-            />
-            {open && (
+          {open ? (
+            <div className="flex items-center justify-between gap-2">
+              <SidebarLink
+                link={{
+                  label: signingOut ? "Signing out..." : "Signout",
+                  href: "#",
+                  icon: (
+                    <IconLogout
+                      className={cn(
+                        "h-5 w-5 shrink-0 text-neutral-600 dark:text-neutral-400",
+                        signingOut && "animate-spin text-red-500"
+                      )}
+                    />
+                  ),
+                }}
+                onClick={handleSignOut}
+                className="flex-1 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+              />
               <div className="mr-1">
                 <ThemeToggle />
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <ThemeToggle className="w-10 h-10 p-0 flex items-center justify-center rounded-xl" />
+              <button
+                type="button"
+                onClick={handleSignOut}
+                title="Signout"
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <IconLogout
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    signingOut && "animate-spin text-red-500"
+                  )}
+                />
+              </button>
+            </div>
+          )}
         </div>
       </SidebarBody>
     </Sidebar>
@@ -202,7 +224,7 @@ export const LogoIcon = () => {
   return (
     <Link
       href="/admin/dashboard"
-      className="relative z-20 flex items-center justify-center py-1 text-sm font-normal"
+      className="relative z-20 flex items-center justify-center w-10 h-10 mx-auto"
       title="PrintShop Admin"
     >
       <div className="h-7 w-7 shrink-0 rounded-full bg-black flex items-center justify-center border border-neutral-700 shadow-xs">
