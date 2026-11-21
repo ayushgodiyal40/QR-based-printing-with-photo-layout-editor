@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Printer, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
-import { signInWithGoogle, isFirebaseConfigured } from "@/lib/firebase/config";
+import { signInWithGoogle, ensureFirebaseInitialized } from "@/lib/firebase/config";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -17,6 +17,10 @@ function LoginForm() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    ensureFirebaseInitialized().catch(() => {});
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +52,6 @@ function LoginForm() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!isFirebaseConfigured()) {
-      setError("Firebase keys are not configured yet. Please add them in .env.local.");
-      return;
-    }
-
     setGoogleLoading(true);
     setError(null);
 
