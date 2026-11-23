@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Save, RefreshCw } from "lucide-react";
 import { getCachedData, setCachedData } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 const CACHE_KEY_PRICING = "admin_pricing_rules";
 
@@ -87,8 +89,9 @@ export default function PricingPage() {
           <h1 className="text-2xl font-black text-gray-900 dark:text-white">Pricing</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Set your print prices per page</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={fetch_rules} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 shadow-sm cursor-pointer">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <button onClick={fetch_rules} title="Refresh rules" className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 shadow-sm cursor-pointer">
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
@@ -99,6 +102,7 @@ export default function PricingPage() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {success ? "Saved ✓" : "Save"}
           </button>
+          <AdminProfileMenu />
         </div>
       </div>
 

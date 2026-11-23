@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { BarChart2, Download, Loader2, Trash2 } from "lucide-react";
 import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 const CACHE_KEY_REPORTS = "admin_reports_orders";
 
@@ -87,7 +89,8 @@ export default function ReportsPage() {
     <div className="p-4 lg:p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Reports</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           <select value={period} onChange={(e) => setPeriod(e.target.value)}
             className="px-3 py-2 rounded-xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:outline-none shadow-sm cursor-pointer">
             <option value="today">Today</option>
@@ -112,6 +115,7 @@ export default function ReportsPage() {
             )}
             <span>Clear Past Orders</span>
           </button>
+          <AdminProfileMenu />
         </div>
       </div>
 

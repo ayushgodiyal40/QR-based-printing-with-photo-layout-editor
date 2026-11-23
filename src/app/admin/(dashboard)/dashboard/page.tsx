@@ -21,6 +21,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 interface DashboardStats {
   today: {
@@ -305,7 +307,8 @@ export default function DashboardPage() {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           <button
             onClick={handleOpenQr}
             title="Display Shop QR Code"
@@ -323,10 +326,12 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={fetchData}
+            title="Refresh Orders"
             className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white transition-colors shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+          <AdminProfileMenu />
         </div>
       </div>
 

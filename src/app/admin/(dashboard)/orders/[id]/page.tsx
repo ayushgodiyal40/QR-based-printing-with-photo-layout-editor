@@ -25,6 +25,8 @@ import Link from "next/link";
 import { printImage, printPdf } from "@/lib/printUtils";
 import PdfViewer from "@/components/PdfViewer";
 import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 // Global in-memory cache for downloaded/prefetched file blobs so Print/Download/Preview execute in 0ms
 const fileBlobCache = new Map<string, { blob: Blob; url: string }>();
@@ -518,6 +520,9 @@ export default function OrderDetailPage() {
             )}
             Delete Order
           </button>
+
+          <ThemeToggle />
+          <AdminProfileMenu />
         </div>
       </div>
 

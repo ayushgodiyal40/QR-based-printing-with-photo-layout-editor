@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Download, Copy, ExternalLink, Save, Database, AlertTriangle, Trash2 } from "lucide-react";
 import { getCachedData, setCachedData } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 const CACHE_KEY_SETTINGS = "admin_settings_shop";
 const CACHE_KEY_QR = "admin_settings_qr";
@@ -90,7 +92,13 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl space-y-6">
-      <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Settings</h1>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <AdminProfileMenu />
+        </div>
+      </div>
 
       {/* QR Code section */}
       <div className="bg-white dark:bg-neutral-950 rounded-2xl border border-gray-100 dark:border-neutral-900 shadow-sm p-6">

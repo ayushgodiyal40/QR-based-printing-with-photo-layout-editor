@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Printer, Plus, Trash2, Circle } from "lucide-react";
 import { getCachedData, setCachedData } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 const CACHE_KEY_PRINTERS = "admin_printers";
 
@@ -54,13 +56,17 @@ export default function PrintersPage() {
           <h1 className="text-2xl font-black text-gray-900 dark:text-white">Printers</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Manage your print shop's printers</p>
         </div>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 shadow-md cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Add Printer
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-700 shadow-md cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Add Printer
+          </button>
+          <AdminProfileMenu />
+        </div>
       </div>
 
       {/* Add printer form */}

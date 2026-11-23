@@ -38,25 +38,21 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
 
   if (!mounted) {
     return (
-      <div className="w-8 h-8 rounded-xl bg-slate-800/50 border border-slate-700 animate-pulse" />
+      <div className={`w-8 h-8 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 animate-pulse ${className}`} />
     );
   }
 
   return (
     <button
       onClick={toggleTheme}
-      className={`p-2 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
-        theme === "dark"
-          ? "bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700 shadow-sm ring-1 ring-amber-400/20"
-          : "bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 shadow-sm"
-      } ${className}`}
+      className={`p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-neutral-700 transition-colors shadow-sm cursor-pointer flex items-center justify-center ${className}`}
       title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
       aria-label="Toggle Theme"
     >
       {theme === "dark" ? (
         <Sun className="w-4 h-4 text-amber-400" />
       ) : (
-        <Moon className="w-4 h-4 text-indigo-300" />
+        <Moon className="w-4 h-4 text-indigo-600" />
       )}
     </button>
   );

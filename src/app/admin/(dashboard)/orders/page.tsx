@@ -25,6 +25,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 import { getCachedData, setCachedData, invalidateCache } from "@/lib/client-cache";
+import ThemeToggle from "@/components/ThemeToggle";
+import AdminProfileMenu from "@/components/admin/AdminProfileMenu";
 
 const getOrdersCacheKey = (status: string, sort: string) => `admin_orders_${status}_${sort}`;
 
@@ -113,9 +115,13 @@ export default function OrdersPage() {
     <div className="p-4 lg:p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">Orders</h1>
-        <button onClick={() => fetchOrders()} className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white shadow-sm cursor-pointer">
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <button onClick={() => fetchOrders()} title="Refresh orders" className="p-2 rounded-xl bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 text-gray-500 dark:text-neutral-300 hover:text-gray-800 dark:hover:text-white shadow-sm cursor-pointer">
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <AdminProfileMenu />
+        </div>
       </div>
 
       {/* Filters */}

@@ -11,16 +11,13 @@ import {
   IconCurrencyRupee,
   IconReportAnalytics,
   IconSettings,
-  IconLogout,
 } from "@tabler/icons-react";
-import { signOut } from "next-auth/react";
 import { motion } from "motion/react";
 import {
   Sidebar,
   SidebarBody,
   SidebarLink,
 } from "@/components/ui/sidebar";
-import ThemeToggle from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export default function AdminSidebar({
@@ -32,26 +29,6 @@ export default function AdminSidebar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (signingOut) return;
-    setSigningOut(true);
-    try {
-      if (typeof window !== "undefined") {
-        try {
-          sessionStorage.clear();
-          localStorage.removeItem("admin_settings_shop");
-          localStorage.removeItem("admin_settings_qr");
-        } catch {}
-      }
-      await signOut({ callbackUrl: "/admin", redirect: true });
-    } catch (err) {
-      console.error("Sign out error:", err);
-      window.location.href = "/admin";
-    }
-  };
 
   const navLinks = [
     {
@@ -143,50 +120,6 @@ export default function AdminSidebar({
               );
             })}
           </div>
-        </div>
-
-        {/* Bottom controls: Signout & Theme Toggle */}
-        <div className="flex flex-col gap-2 pt-3 border-t border-neutral-200 dark:border-neutral-800">
-          {open ? (
-            <div className="flex items-center justify-between gap-2">
-              <SidebarLink
-                link={{
-                  label: signingOut ? "Signing out..." : "Signout",
-                  href: "#",
-                  icon: (
-                    <IconLogout
-                      className={cn(
-                        "h-5 w-5 shrink-0 text-neutral-600 dark:text-neutral-400",
-                        signingOut && "animate-spin text-red-500"
-                      )}
-                    />
-                  ),
-                }}
-                onClick={handleSignOut}
-                className="flex-1 px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-              />
-              <div className="mr-1">
-                <ThemeToggle />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <ThemeToggle className="w-10 h-10 p-0 flex items-center justify-center rounded-xl" />
-              <button
-                type="button"
-                onClick={handleSignOut}
-                title="Signout"
-                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer"
-              >
-                <IconLogout
-                  className={cn(
-                    "h-5 w-5 shrink-0",
-                    signingOut && "animate-spin text-red-500"
-                  )}
-                />
-              </button>
-            </div>
-          )}
         </div>
       </SidebarBody>
     </Sidebar>
